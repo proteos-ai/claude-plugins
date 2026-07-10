@@ -1,26 +1,44 @@
 {
   "proteos-knowledge": {
     "type": "http",
-    "url": "https://mcp.proteos.ai/knowledge/v1"
+    "url": "https://mcp.proteos.ai/knowledge/v1",
+    "oauth": {
+      "clientId": "tpc_ugRbPFUJMjSBhFtF4wH1Cu"
+    }
   },
   "proteos-admin": {
     "type": "http",
-    "url": "https://mcp.proteos.ai/admin/v1"
+    "url": "https://mcp.proteos.ai/admin/v1",
+    "oauth": {
+      "clientId": "tpc_ugRbPFUJMjSBhFtF4wH1Cu"
+    }
   },
   "proteos-data": {
     "type": "http",
-    "url": "https://mcp.proteos.ai/data/v1"
+    "url": "https://mcp.proteos.ai/data/v1",
+    "oauth": {
+      "clientId": "tpc_ugRbPFUJMjSBhFtF4wH1Cu"
+    }
   },
   "proteos-agents": {
     "type": "http",
-    "url": "https://mcp.proteos.ai/agents/v1"
+    "url": "https://mcp.proteos.ai/agents/v1",
+    "oauth": {
+      "clientId": "tpc_ugRbPFUJMjSBhFtF4wH1Cu"
+    }
   },
   "proteos-workflows": {
     "type": "http",
-    "url": "https://mcp.proteos.ai/workflows/v1"
+    "url": "https://mcp.proteos.ai/workflows/v1",
+    "oauth": {
+      "clientId": "tpc_ugRbPFUJMjSBhFtF4wH1Cu"
+    }
   },
   "proteos-conversations": {
     "type": "http",
-    "url": "https://mcp.proteos.ai/conversations/v1"
+    "url": "https://mcp.proteos.ai/conversations/v1",
+    "oauth": {
+      "clientId": "tpc_ugRbPFUJMjSBhFtF4wH1Cu"
+    }
   }
 }
