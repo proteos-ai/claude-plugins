@@ -75,11 +75,7 @@ live org structure without extra setup.
 
 Auth is **OAuth with Dynamic Client Registration** — no token to configure.
 On first use Claude Code runs the browser OAuth flow (re-auth anytime with
-`/mcp`). Optional environment override for non-prod targets:
-
-```sh
-export PROTEOS_MCP_URL=https://mcp.staging.example   # defaults to https://mcp.proteos.ai
-```
+`/mcp`). All six point at production (`https://mcp.proteos.ai`).
 
 ## The skills and how they chain
 

@@ -1,26 +1,26 @@
 {
   "proteos-knowledge": {
     "type": "http",
-    "url": "${PROTEOS_MCP_URL:-https://mcp.proteos.ai}/knowledge/v1"
+    "url": "https://mcp.proteos.ai/knowledge/v1"
   },
   "proteos-admin": {
     "type": "http",
-    "url": "${PROTEOS_MCP_URL:-https://mcp.proteos.ai}/admin/v1"
+    "url": "https://mcp.proteos.ai/admin/v1"
   },
   "proteos-data": {
     "type": "http",
-    "url": "${PROTEOS_MCP_URL:-https://mcp.proteos.ai}/data/v1"
+    "url": "https://mcp.proteos.ai/data/v1"
   },
   "proteos-agents": {
     "type": "http",
-    "url": "${PROTEOS_MCP_URL:-https://mcp.proteos.ai}/agents/v1"
+    "url": "https://mcp.proteos.ai/agents/v1"
   },
   "proteos-workflows": {
     "type": "http",
-    "url": "${PROTEOS_MCP_URL:-https://mcp.proteos.ai}/workflows/v1"
+    "url": "https://mcp.proteos.ai/workflows/v1"
   },
   "proteos-conversations": {
     "type": "http",
-    "url": "${PROTEOS_MCP_URL:-https://mcp.proteos.ai}/conversations/v1"
+    "url": "https://mcp.proteos.ai/conversations/v1"
   }
 }
