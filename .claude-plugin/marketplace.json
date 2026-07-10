@@ -20,7 +20,8 @@
         "./skills/hook-engineer",
         "./skills/action-engineer",
         "./skills/component-engineer"
-      ]
+      ],
+      "version": "0.18.3"
     }
   ]
 }
