@@ -1,0 +1,125 @@
+{
+  "slug": "customer-detail",
+  "entity_slug": "customer",
+  "module_slug": "crm-sales",
+  "name": "Customer detail",
+  "type": "record",
+  "actions": [
+    { "label": "Log a call", "icon": "PhoneCall", "action": "log-call" }
+  ],
+  "layout": {
+    "version": 1,
+    "main": {
+      "type": "column",
+      "id": "main",
+      "gap": "md",
+      "children": [
+        {
+          "type": "section",
+          "id": "sec-overview",
+          "title": "Overview",
+          "content": {
+            "type": "column",
+            "id": "col-overview",
+            "gap": "sm",
+            "children": [
+              {
+                "type": "row",
+                "id": "r-name",
+                "gap": "md",
+                "children": [
+                  { "type": "field", "id": "f-name",   "attribute": "name",   "width": "1/2" },
+                  { "type": "field", "id": "f-status", "attribute": "status", "width": "1/2" }
+                ]
+              },
+              {
+                "type": "row",
+                "id": "r-contact",
+                "gap": "md",
+                "children": [
+                  { "type": "field", "id": "f-email",    "attribute": "email",    "width": "1/2" },
+                  { "type": "field", "id": "f-industry", "attribute": "industry", "width": "1/2" }
+                ]
+              },
+              {
+                "type": "row",
+                "id": "r-commercial",
+                "gap": "md",
+                "children": [
+                  { "type": "field", "id": "f-owner",   "attribute": "owner",          "width": "1/2" },
+                  { "type": "field", "id": "f-revenue", "attribute": "annual_revenue", "width": "1/2" }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "type": "tabs",
+          "id": "tabs-main",
+          "default_tab_id": "orders",
+          "tabs": [
+            {
+              "id": "orders",
+              "label": "Orders",
+              "icon": "ShoppingCart",
+              "content": {
+                "type": "related_list",
+                "id": "rl-orders",
+                "related_entity_slug": "order",
+                "via_attribute": "customer_id",
+                "list_slug": "open-orders"
+              }
+            },
+            {
+              "id": "details",
+              "label": "Details",
+              "icon": "Info",
+              "content": {
+                "type": "column",
+                "id": "col-details",
+                "gap": "sm",
+                "children": [
+                  { "type": "field", "id": "f-priority",   "attribute": "is_priority" },
+                  { "type": "field", "id": "f-created-at", "attribute": "created_at" }
+                ]
+              }
+            },
+            {
+              "id": "activity",
+              "label": "Activity",
+              "icon": "Activity",
+              "content": { "type": "text", "id": "t-activity", "variant": "body", "content": "No recent activity." }
+            }
+          ]
+        },
+        {
+          "type": "section",
+          "id": "sec-shipping",
+          "title": "Shipping address",
+          "description": "Default ship-to address, used to pre-fill new orders.",
+          "is_collapsible": true,
+          "default_collapsed": true,
+          "content": {
+            "type": "column",
+            "id": "col-shipping",
+            "gap": "sm",
+            "children": [
+              { "type": "field", "id": "f-addr1", "attribute": "shipping_address.address_line_1" },
+              { "type": "field", "id": "f-addr2", "attribute": "shipping_address.address_line_2", "empty_display": "hide" },
+              {
+                "type": "row",
+                "id": "r-city",
+                "gap": "sm",
+                "children": [
+                  { "type": "field", "id": "f-postal",  "attribute": "shipping_address.postal_code" },
+                  { "type": "field", "id": "f-city",    "attribute": "shipping_address.city" },
+                  { "type": "field", "id": "f-country", "attribute": "shipping_address.country" }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

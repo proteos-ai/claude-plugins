@@ -1,0 +1,7 @@
+{
+  "slug": "sales",
+  "name": "Sales",
+  "description": "Manage the customer pipeline and the orders customers place.",
+  "module_slug": "crm-sales",
+  "icon_slug": "TrendingUp"
+}

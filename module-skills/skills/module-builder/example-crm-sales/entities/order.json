@@ -1,0 +1,102 @@
+{
+  "slug": "order",
+  "name": "Order",
+  "description": "A confirmed request from a customer to move freight. Has its own lifecycle (draft → confirmed → in-transit → delivered, or cancelled) independent of the customer, which is why it is a separate aggregate rather than embedded. The foreign key to the customer lives here, on the many side.",
+  "is_remote": false,
+  "module_slug": "crm-sales",
+  "title_template": "{{ number }}",
+  "attributes": [
+    {
+      "name": "number",
+      "type": "string",
+      "label": "Order number",
+      "description": "Human-facing order identifier printed on paperwork (e.g. ORD-2026-00142). Unique per org; generated on confirmation.",
+      "is_required": true,
+      "is_nullable": false,
+      "is_unique": true,
+      "meta": {
+        "min_length": 1,
+        "max_length": 40
+      }
+    },
+    {
+      "name": "customer_id",
+      "type": "relation",
+      "label": "Customer",
+      "description": "The customer who placed this order. Set at creation and never changed — re-assigning means voiding and re-issuing.",
+      "is_required": true,
+      "is_nullable": false,
+      "is_unique": false,
+      "meta": {
+        "related_entity_slug": "customer",
+        "related_attribute": "id",
+        "predicate": "is placed by",
+        "description": "Each order is placed by exactly one customer; a customer places many orders. No DB cascade — an order-cleanup on customer delete must be handled in a before_delete hook.",
+        "on_delete": "restrict"
+      }
+    },
+    {
+      "name": "status",
+      "type": "enum",
+      "label": "Status",
+      "description": "Fulfilment lifecycle position. Gates which fields are editable (commercial terms lock once in-transit) and drives operational dashboards.",
+      "is_required": true,
+      "is_nullable": false,
+      "is_unique": false,
+      "default_value": "draft",
+      "meta": {
+        "values": [
+          {
+            "value": "draft",
+            "label": "Draft",
+            "description": "Being prepared; not yet committed. Fully editable; excluded from revenue and ops reporting."
+          },
+          {
+            "value": "confirmed",
+            "label": "Confirmed",
+            "description": "Committed by the customer and accepted by ops. Awaiting pickup; commercial terms still editable."
+          },
+          {
+            "value": "in-transit",
+            "label": "In transit",
+            "description": "Freight has been picked up and is moving. Commercial terms are locked; only tracking updates are allowed."
+          },
+          {
+            "value": "delivered",
+            "label": "Delivered",
+            "description": "Delivered and confirmed by the consignee. Terminal success state; the order becomes read-only."
+          },
+          {
+            "value": "cancelled",
+            "label": "Cancelled",
+            "description": "Voided before delivery. Terminal state; requires a cancellation reason and is retained for audit."
+          }
+        ]
+      }
+    },
+    {
+      "name": "total",
+      "type": "currency",
+      "label": "Order total",
+      "description": "The all-in price quoted to the customer for this order, in the order's currency. Locked once the order is in-transit. Stored as an exact decimal amount plus currency code.",
+      "is_required": false,
+      "is_nullable": true,
+      "is_unique": false,
+      "meta": {
+        "default_currency_code": "USD"
+      }
+    },
+    {
+      "name": "placed_at",
+      "type": "datetime",
+      "label": "Placed at",
+      "description": "When the customer confirmed the order. Set on the draft → confirmed transition; drives lead-time and on-time reporting.",
+      "is_required": false,
+      "is_nullable": true,
+      "is_unique": false,
+      "meta": {
+        "format": "date-time"
+      }
+    }
+  ]
+}

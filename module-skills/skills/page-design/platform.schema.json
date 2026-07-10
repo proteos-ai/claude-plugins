@@ -1,0 +1,541 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://proteos.ai/schemas/platform.schema.json",
+  "title": "Proteos platform metadata authoring schema",
+  "description": "Validation schema for the design files a platform-designer authors: entities, lists, list-views, pages (with the full recursive PageLayout tree), apps, menus, and the module manifest. Validate each file against the matching $def: entities/<slug>.json -> #/$defs/createEntityRequest ; lists/<slug>.json -> #/$defs/createListRequest ; list-views/<slug>.json -> #/$defs/createListViewRequest ; pages/<slug>.json -> #/$defs/createPageRequest ; apps/<slug>.json -> #/$defs/createAppRequest ; menus/<slug>.json -> #/$defs/createMenuConfigurationRequest ; module.json -> #/$defs/deployModuleRequest. These are AUTHORING shapes (additionalProperties:false, no server-set audit fields); output pulled from a live env via get_* carries extra fields (org_id, created_at, ...).",
+
+  "$defs": {
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "description": "kebab-case, lowercase. Immutable primary key. e.g. customer, purchase-order, customer-detail."
+    },
+    "attributeName": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(_[a-z0-9]+)*$",
+      "description": "snake_case data key. Booleans carry an is_/has_/can_ prefix. e.g. first_name, customer_id, is_signed."
+    },
+    "enumValue": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "description": "kebab-case, lowercase, stable machine token. e.g. payment-pending, in-transit. (The platform stores the raw string; this skill standardises on kebab-case. Canonical external codes like DE / USD are the deliberate exception.)"
+    },
+    "iconSlug": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Za-z0-9]*$",
+      "description": "lucide icon name in PascalCase. e.g. FileText, Users, TrendingUp. kebab-case silently falls back to a placeholder."
+    },
+    "sizeValue": {
+      "description": "Polymorphic sizing: number in [0,1] (fraction), 'n/m', 'Npx', 'N%', 'auto', or 'fill'.",
+      "oneOf": [
+        { "type": "number", "minimum": 0, "maximum": 1 },
+        { "type": "string", "pattern": "^(\\d+/\\d+|\\d+px|\\d+%|auto|fill)$" }
+      ]
+    },
+
+    "comparisonOperator": {
+      "type": "string",
+      "enum": ["eq","ne","gt","gte","lt","lte","in","not_in","contains","starts_with","ends_with","empty","not_empty"]
+    },
+    "filterElement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["field", "value", "operator"],
+      "properties": {
+        "field": { "$ref": "#/$defs/attributeName" },
+        "value": {
+          "type": "string",
+          "description": "ALWAYS a string; server coerces. Booleans -> 'true'/'false'. in/not_in -> pipe-joined 'a|b|c'. Ignored for empty/not_empty."
+        },
+        "operator": { "$ref": "#/$defs/comparisonOperator" }
+      }
+    },
+    "filterGroup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["logical_operator"],
+      "properties": {
+        "logical_operator": { "type": "string", "enum": ["and", "or"] },
+        "elements": { "type": "array", "items": { "$ref": "#/$defs/filterElement" } },
+        "groups": { "type": "array", "items": { "$ref": "#/$defs/filterGroup" } }
+      }
+    },
+
+    "enumValueEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "label", "description"],
+      "properties": {
+        "value": { "$ref": "#/$defs/enumValue" },
+        "label": { "type": "string" },
+        "description": { "type": "string", "minLength": 1 }
+      }
+    },
+
+    "attribute": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "type", "label", "description", "is_required", "is_unique"],
+      "properties": {
+        "name": { "$ref": "#/$defs/attributeName" },
+        "type": {
+          "type": "string",
+          "enum": ["string","number","integer","boolean","array","object","datetime","enum","relation","user","currency","knowledge-text","file"]
+        },
+        "label": { "type": "string", "description": "UI label, Title Case." },
+        "description": { "type": "string", "minLength": 1, "description": "Business meaning. Non-negotiable; the schema is read by AI agents." },
+        "is_required": { "type": "boolean" },
+        "is_nullable": { "type": "boolean" },
+        "is_unique": { "type": "boolean" },
+        "is_read_only": { "type": "boolean" },
+        "is_platform_managed": { "type": "boolean" },
+        "default_value": {},
+        "meta": { "type": "object" }
+      },
+      "allOf": [
+        { "if": { "properties": { "type": { "const": "string" } } },      "then": { "properties": { "meta": { "$ref": "#/$defs/stringMeta" } } } },
+        { "if": { "properties": { "type": { "const": "number" } } },      "then": { "properties": { "meta": { "$ref": "#/$defs/numberMeta" } } } },
+        { "if": { "properties": { "type": { "const": "integer" } } },     "then": { "properties": { "meta": { "$ref": "#/$defs/numberMeta" } } } },
+        { "if": { "properties": { "type": { "const": "datetime" } } },    "then": { "required": ["meta"], "properties": { "meta": { "$ref": "#/$defs/datetimeMeta" } } } },
+        { "if": { "properties": { "type": { "const": "enum" } } },        "then": { "required": ["meta"], "properties": { "meta": { "$ref": "#/$defs/enumMeta" } } } },
+        { "if": { "properties": { "type": { "const": "array" } } },       "then": { "required": ["meta"], "properties": { "meta": { "$ref": "#/$defs/arrayMeta" } } } },
+        { "if": { "properties": { "type": { "const": "object" } } },      "then": { "required": ["meta"], "properties": { "meta": { "$ref": "#/$defs/objectMeta" } } } },
+        { "if": { "properties": { "type": { "const": "relation" } } },    "then": { "required": ["meta"], "properties": { "meta": { "$ref": "#/$defs/relationMeta" } } } },
+        { "if": { "properties": { "type": { "const": "currency" } } },    "then": { "properties": { "meta": { "$ref": "#/$defs/currencyMeta" } } } }
+      ]
+    },
+
+    "stringMeta": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "format": { "type": "string", "enum": ["email","uri","uuid","hostname","ipv4","ipv6"] },
+        "min_length": { "type": "integer", "minimum": 0 },
+        "max_length": { "type": "integer", "minimum": 0 },
+        "pattern": { "type": "string" }
+      }
+    },
+    "numberMeta": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "minimum": { "type": "number" },
+        "maximum": { "type": "number" },
+        "exclusive_minimum": { "type": "number" },
+        "exclusive_maximum": { "type": "number" },
+        "multiple_of": { "type": "number" }
+      }
+    },
+    "datetimeMeta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["format"],
+      "properties": {
+        "format": { "type": "string", "enum": ["date-time","date","time","duration"] },
+        "minimum": { "type": "string" },
+        "maximum": { "type": "string" }
+      }
+    },
+    "enumMeta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["values"],
+      "properties": {
+        "values": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/enumValueEntry" } }
+      }
+    },
+    "arrayMeta": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "items": { "$ref": "#/$defs/attribute" },
+        "min_items": { "type": "integer", "minimum": 0 },
+        "max_items": { "type": "integer", "minimum": 0 },
+        "items_must_be_unique": { "type": "boolean" }
+      }
+    },
+    "objectMeta": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "attributes": { "type": "array", "items": { "$ref": "#/$defs/attribute" } }
+      }
+    },
+    "relationMeta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["related_entity_slug", "related_attribute", "predicate", "on_delete"],
+      "properties": {
+        "related_entity_slug": { "$ref": "#/$defs/slug" },
+        "related_attribute": { "$ref": "#/$defs/attributeName" },
+        "predicate": { "type": "string", "description": "host -> target phrase, e.g. 'is placed by'." },
+        "description": { "type": "string" },
+        "on_delete": { "type": "string", "enum": ["cascade","restrict","set-null"], "description": "Advisory only — NO DB cascade. Propagate deletes in a before_delete hook." }
+      }
+    },
+    "currencyMeta": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "default_currency_code": { "type": "string" },
+        "allowed_currency_codes": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+
+    "createEntityRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["slug", "name", "description", "is_remote", "attributes"],
+      "properties": {
+        "slug": { "$ref": "#/$defs/slug" },
+        "name": { "type": "string" },
+        "description": { "type": "string", "minLength": 1 },
+        "is_remote": { "type": "boolean" },
+        "module_slug": { "$ref": "#/$defs/slug" },
+        "title_template": { "type": "string", "description": "Liquid, e.g. '{{ first_name }} {{ last_name }}'." },
+        "attributes": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/attribute" } }
+      }
+    },
+
+    "column": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attribute", "label", "width"],
+      "properties": {
+        "attribute": { "$ref": "#/$defs/attributeName" },
+        "label": { "type": "string" },
+        "width": { "type": "number", "minimum": 0 }
+      }
+    },
+    "sortConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attribute", "direction"],
+      "properties": {
+        "attribute": { "$ref": "#/$defs/attributeName" },
+        "direction": { "type": "string", "enum": ["asc", "desc"] }
+      }
+    },
+    "createListRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["slug", "entity_slug", "name", "columns", "sorting", "filters"],
+      "properties": {
+        "slug": { "$ref": "#/$defs/slug" },
+        "entity_slug": { "$ref": "#/$defs/slug" },
+        "module_slug": { "$ref": "#/$defs/slug" },
+        "name": { "type": "string" },
+        "columns": { "type": "array", "items": { "$ref": "#/$defs/column" } },
+        "sorting": { "type": "array", "items": { "$ref": "#/$defs/sortConfig" } },
+        "filters": { "type": "array", "items": { "$ref": "#/$defs/filterGroup" } }
+      }
+    },
+    "createListViewRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["slug", "list_slug", "name"],
+      "properties": {
+        "slug": { "$ref": "#/$defs/slug" },
+        "list_slug": { "$ref": "#/$defs/slug" },
+        "module_slug": { "$ref": "#/$defs/slug" },
+        "name": { "type": "string" },
+        "columns": { "type": "array", "items": { "$ref": "#/$defs/column" } },
+        "sorting": { "type": "array", "items": { "$ref": "#/$defs/sortConfig" } },
+        "filters": { "type": "array", "items": { "$ref": "#/$defs/filterGroup" } }
+      }
+    },
+
+    "commonProps": {
+      "description": "Properties available on every layout element. Spread into each element $def.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "visible_when": { "$ref": "#/$defs/filterGroup" },
+        "read_only_when": { "$ref": "#/$defs/filterGroup" },
+        "width": { "$ref": "#/$defs/sizeValue" },
+        "height": { "$ref": "#/$defs/sizeValue" },
+        "grow": { "type": "number" },
+        "shrink": { "type": "number" },
+        "align": { "type": "string", "enum": ["start","center","end","stretch"] },
+        "responsive": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "sm": { "$ref": "#/$defs/sizingProps" },
+            "md": { "$ref": "#/$defs/sizingProps" },
+            "lg": { "$ref": "#/$defs/sizingProps" }
+          }
+        }
+      }
+    },
+    "sizingProps": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "width": { "$ref": "#/$defs/sizeValue" },
+        "height": { "$ref": "#/$defs/sizeValue" },
+        "grow": { "type": "number" },
+        "shrink": { "type": "number" },
+        "align": { "type": "string", "enum": ["start","center","end","stretch"] }
+      }
+    },
+
+    "layoutElement": {
+      "type": "object",
+      "required": ["type"],
+      "oneOf": [
+        { "$ref": "#/$defs/rowElement" },
+        { "$ref": "#/$defs/columnElement" },
+        { "$ref": "#/$defs/sectionElement" },
+        { "$ref": "#/$defs/tabsElement" },
+        { "$ref": "#/$defs/fieldElement" },
+        { "$ref": "#/$defs/relatedListElement" },
+        { "$ref": "#/$defs/componentElement" },
+        { "$ref": "#/$defs/dividerElement" },
+        { "$ref": "#/$defs/textElement" }
+      ]
+    },
+    "rowElement": {
+      "type": "object",
+      "unevaluatedProperties": false,
+      "allOf": [{ "$ref": "#/$defs/commonProps" }],
+      "required": ["type", "children"],
+      "properties": {
+        "type": { "const": "row" },
+        "gap": { "type": "string", "enum": ["xs","sm","md","lg"] },
+        "allows_wrap": { "type": "boolean" },
+        "align": { "type": "string", "enum": ["start","center","end","stretch"] },
+        "justify": { "type": "string", "enum": ["start","center","end","between","around"] },
+        "children": { "type": "array", "items": { "$ref": "#/$defs/layoutElement" } }
+      }
+    },
+    "columnElement": {
+      "type": "object",
+      "unevaluatedProperties": false,
+      "allOf": [{ "$ref": "#/$defs/commonProps" }],
+      "required": ["type", "children"],
+      "properties": {
+        "type": { "const": "column" },
+        "gap": { "type": "string", "enum": ["xs","sm","md","lg"] },
+        "align": { "type": "string", "enum": ["start","center","end","stretch"] },
+        "justify": { "type": "string", "enum": ["start","center","end","between","around"] },
+        "children": { "type": "array", "items": { "$ref": "#/$defs/layoutElement" } }
+      }
+    },
+    "sectionElement": {
+      "type": "object",
+      "unevaluatedProperties": false,
+      "allOf": [{ "$ref": "#/$defs/commonProps" }],
+      "required": ["type", "content"],
+      "properties": {
+        "type": { "const": "section" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "is_collapsible": { "type": "boolean" },
+        "default_collapsed": { "type": "boolean" },
+        "content": { "$ref": "#/$defs/layoutElement" }
+      }
+    },
+    "tabsElement": {
+      "type": "object",
+      "unevaluatedProperties": false,
+      "allOf": [{ "$ref": "#/$defs/commonProps" }],
+      "required": ["type", "tabs"],
+      "properties": {
+        "type": { "const": "tabs" },
+        "default_tab_id": { "type": "string" },
+        "tabs": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "label", "content"],
+            "properties": {
+              "id": { "type": "string", "minLength": 1 },
+              "label": { "type": "string", "minLength": 1 },
+              "icon": { "$ref": "#/$defs/iconSlug" },
+              "visible_when": { "$ref": "#/$defs/filterGroup" },
+              "content": { "$ref": "#/$defs/layoutElement" }
+            }
+          }
+        }
+      }
+    },
+    "fieldElement": {
+      "type": "object",
+      "unevaluatedProperties": false,
+      "allOf": [{ "$ref": "#/$defs/commonProps" }],
+      "required": ["type", "attribute"],
+      "properties": {
+        "type": { "const": "field" },
+        "attribute": { "type": "string", "minLength": 1, "description": "snake_case attribute name; dot-path into object attrs (shipping_address.postal_code). Must resolve to a leaf." },
+        "label": { "type": ["string", "null"], "description": "null hides the label; absent inherits the attribute label." },
+        "description": { "type": "string" },
+        "placeholder": { "type": "string" },
+        "is_read_only": { "type": "boolean" },
+        "is_required": { "type": "boolean" },
+        "empty_display": { "type": "string", "description": "'dash' | 'hide' | any literal placeholder string." },
+        "control": {
+          "type": "string",
+          "enum": ["text","textarea","email","url","password","number","switch","checkbox","select","radio-group","chip-group","multi-select","date-picker","datetime-picker","time-picker","tag-input","entity-picker","user-picker","currency","knowledge-text","file"]
+        },
+        "control_props": { "type": "object" }
+      }
+    },
+    "relatedListElement": {
+      "type": "object",
+      "unevaluatedProperties": false,
+      "allOf": [{ "$ref": "#/$defs/commonProps" }],
+      "required": ["type", "related_entity_slug", "via_attribute"],
+      "properties": {
+        "type": { "const": "related_list" },
+        "related_entity_slug": { "$ref": "#/$defs/slug" },
+        "via_attribute": { "$ref": "#/$defs/attributeName" },
+        "list_slug": { "$ref": "#/$defs/slug" }
+      }
+    },
+    "componentElement": {
+      "type": "object",
+      "unevaluatedProperties": false,
+      "allOf": [{ "$ref": "#/$defs/commonProps" }],
+      "required": ["type", "component_slug"],
+      "properties": {
+        "type": { "const": "component" },
+        "component_slug": { "$ref": "#/$defs/slug" },
+        "props": { "type": "object" }
+      }
+    },
+    "dividerElement": {
+      "type": "object",
+      "unevaluatedProperties": false,
+      "allOf": [{ "$ref": "#/$defs/commonProps" }],
+      "required": ["type"],
+      "properties": { "type": { "const": "divider" } }
+    },
+    "textElement": {
+      "type": "object",
+      "unevaluatedProperties": false,
+      "allOf": [{ "$ref": "#/$defs/commonProps" }],
+      "required": ["type", "variant", "content"],
+      "properties": {
+        "type": { "const": "text" },
+        "variant": { "type": "string", "enum": ["heading","subheading","body","caption","callout"] },
+        "content": { "type": "string", "minLength": 1 }
+      }
+    },
+    "pageLayout": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "main"],
+      "properties": {
+        "version": { "const": 1 },
+        "main": { "$ref": "#/$defs/layoutElement" },
+        "side_panel": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["content"],
+          "properties": {
+            "width": { "$ref": "#/$defs/sizeValue" },
+            "is_sticky": { "type": "boolean" },
+            "content": { "$ref": "#/$defs/layoutElement" }
+          }
+        }
+      }
+    },
+    "pageAction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "icon", "action"],
+      "properties": {
+        "label": { "type": "string" },
+        "icon": { "$ref": "#/$defs/iconSlug" },
+        "action": { "type": "string" }
+      }
+    },
+    "createPageRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["slug", "name", "actions", "layout"],
+      "properties": {
+        "slug": { "$ref": "#/$defs/slug" },
+        "name": { "type": "string" },
+        "module_slug": { "$ref": "#/$defs/slug" },
+        "type": { "type": "string", "enum": ["record", "platform"], "description": "defaults to 'record'. record pages require entity_slug; platform pages must omit it." },
+        "entity_slug": { "$ref": "#/$defs/slug" },
+        "actions": { "type": "array", "items": { "$ref": "#/$defs/pageAction" } },
+        "layout": { "$ref": "#/$defs/pageLayout" }
+      },
+      "allOf": [
+        { "if": { "properties": { "type": { "const": "platform" } }, "required": ["type"] },
+          "then": { "not": { "required": ["entity_slug"] } },
+          "else": { "required": ["entity_slug"] } }
+      ]
+    },
+
+    "createAppRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["slug", "name", "icon_slug"],
+      "properties": {
+        "slug": { "$ref": "#/$defs/slug" },
+        "name": { "type": "string" },
+        "module_slug": { "$ref": "#/$defs/slug" },
+        "description": { "type": "string" },
+        "icon_slug": { "$ref": "#/$defs/iconSlug" }
+      }
+    },
+
+    "menuItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "order", "label", "type", "icon", "children"],
+      "properties": {
+        "id": { "type": "string" },
+        "order": { "type": "integer" },
+        "label": { "type": "string" },
+        "type": { "type": "string", "enum": ["link","group","entity","page","list"] },
+        "icon": { "$ref": "#/$defs/iconSlug" },
+        "reference": { "type": "string", "description": "target slug (list/page/entity). '' for group." },
+        "children": {
+          "oneOf": [
+            { "type": "array", "items": { "$ref": "#/$defs/menuItem" } },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "createMenuConfigurationRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["slug", "name", "app_slug", "items", "is_default"],
+      "properties": {
+        "slug": { "$ref": "#/$defs/slug" },
+        "name": { "type": "string" },
+        "module_slug": { "$ref": "#/$defs/slug" },
+        "app_slug": { "$ref": "#/$defs/slug" },
+        "items": { "type": "array", "items": { "$ref": "#/$defs/menuItem" } },
+        "is_default": { "type": "boolean" }
+      }
+    },
+
+    "deployModuleRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["slug", "name", "version"],
+      "properties": {
+        "slug": { "$ref": "#/$defs/slug" },
+        "name": { "type": "string" },
+        "version": { "type": "string" },
+        "description": { "type": "string" },
+        "dependencies": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "entities": { "type": "object", "additionalProperties": { "type": "string" } }
+          }
+        }
+      }
+    }
+  }
+}

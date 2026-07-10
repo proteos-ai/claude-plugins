@@ -1,0 +1,161 @@
+{
+  "slug": "customer",
+  "name": "Customer",
+  "description": "A company that buys freight-forwarding services from us. Created when sales qualifies an inbound lead and lives through the full account lifecycle (prospect → active → churned). One customer places many orders; the account owner is responsible for the relationship.",
+  "is_remote": false,
+  "module_slug": "crm-sales",
+  "title_template": "{{ name }}",
+  "attributes": [
+    {
+      "name": "name",
+      "type": "string",
+      "label": "Name",
+      "description": "The customer's trading name as it appears on contracts and invoices. Set at creation; changing it is a rename of the account, not a new record.",
+      "is_required": true,
+      "is_nullable": false,
+      "is_unique": false,
+      "meta": {
+        "min_length": 1,
+        "max_length": 200
+      }
+    },
+    {
+      "name": "email",
+      "type": "string",
+      "label": "Primary email",
+      "description": "The main operational contact address for the account. Used for order confirmations and account notices.",
+      "is_required": false,
+      "is_nullable": true,
+      "is_unique": true,
+      "meta": {
+        "format": "email"
+      }
+    },
+    {
+      "name": "status",
+      "type": "enum",
+      "label": "Status",
+      "description": "Account lifecycle position. Drives pipeline reporting, revenue recognition, and which workflows are available on the record.",
+      "is_required": true,
+      "is_nullable": false,
+      "is_unique": false,
+      "meta": {
+        "values": [
+          {
+            "value": "prospect",
+            "label": "Prospect",
+            "description": "Qualified by sales but has not yet paid a first invoice. Appears in the pipeline; excluded from revenue reporting."
+          },
+          {
+            "value": "active",
+            "label": "Active",
+            "description": "Has at least one paid invoice and no churn signal. Counts toward MRR and is eligible for new orders."
+          },
+          {
+            "value": "churned",
+            "label": "Churned",
+            "description": "No active contract and flagged lost by the account owner. Read-only in most flows; retained for history and win-back."
+          }
+        ]
+      }
+    },
+    {
+      "name": "industry",
+      "type": "string",
+      "label": "Industry",
+      "description": "The customer's primary industry, used for segmentation and reporting. Free text today; a candidate to promote to an enum once the value set stabilises.",
+      "is_required": false,
+      "is_nullable": true,
+      "is_unique": false
+    },
+    {
+      "name": "annual_revenue",
+      "type": "currency",
+      "label": "Annual revenue",
+      "description": "Estimated annual revenue of the customer's business, captured by sales during qualification. Used to size the account and prioritise coverage. Stored as an exact decimal amount plus currency code.",
+      "is_required": false,
+      "is_nullable": true,
+      "is_unique": false,
+      "meta": {
+        "default_currency_code": "USD"
+      }
+    },
+    {
+      "name": "owner",
+      "type": "user",
+      "label": "Account owner",
+      "description": "The salesperson responsible for this account. Assigned on creation and reassigned on territory changes; drives 'my accounts' views and notification routing.",
+      "is_required": false,
+      "is_nullable": true,
+      "is_unique": false
+    },
+    {
+      "name": "is_priority",
+      "type": "boolean",
+      "label": "Priority account",
+      "description": "Whether this account is on the strategic priority list — surfaces it in leadership dashboards and raises its SLA. Set by the account owner or sales lead.",
+      "is_required": false,
+      "is_nullable": false,
+      "is_unique": false,
+      "default_value": false
+    },
+    {
+      "name": "shipping_address",
+      "type": "object",
+      "label": "Shipping address",
+      "description": "The customer's default ship-to address, used to pre-fill new orders. An embedded value object — it has no identity of its own and is replaced wholesale when edited.",
+      "is_required": false,
+      "is_nullable": true,
+      "is_unique": false,
+      "meta": {
+        "attributes": [
+          {
+            "name": "address_line_1",
+            "type": "string",
+            "label": "Address line 1",
+            "description": "Street and number.",
+            "is_required": false,
+            "is_nullable": true,
+            "is_unique": false
+          },
+          {
+            "name": "address_line_2",
+            "type": "string",
+            "label": "Address line 2",
+            "description": "Suite, unit, or building — optional.",
+            "is_required": false,
+            "is_nullable": true,
+            "is_unique": false
+          },
+          {
+            "name": "city",
+            "type": "string",
+            "label": "City",
+            "description": "City or locality.",
+            "is_required": false,
+            "is_nullable": true,
+            "is_unique": false
+          },
+          {
+            "name": "postal_code",
+            "type": "string",
+            "label": "Postal code",
+            "description": "ZIP / postcode.",
+            "is_required": false,
+            "is_nullable": true,
+            "is_unique": false
+          },
+          {
+            "name": "country",
+            "type": "string",
+            "label": "Country",
+            "description": "ISO-3166 alpha-2 country code.",
+            "is_required": false,
+            "is_nullable": true,
+            "is_unique": false
+          }
+        ]
+      }
+    }
+  ]
+}

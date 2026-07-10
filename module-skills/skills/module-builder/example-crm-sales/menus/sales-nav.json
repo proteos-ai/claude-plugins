@@ -1,0 +1,21 @@
+{
+  "slug": "sales-nav",
+  "name": "Sales navigation",
+  "module_slug": "crm-sales",
+  "app_slug": "sales",
+  "is_default": true,
+  "items": [
+    {
+      "id": "accounts",
+      "order": 0,
+      "label": "Accounts",
+      "type": "group",
+      "icon": "Users",
+      "reference": "",
+      "children": [
+        { "id": "customers", "order": 0, "label": "Customers", "type": "list", "icon": "Building2",    "reference": "active-customers", "children": [] },
+        { "id": "orders",    "order": 1, "label": "Orders",    "type": "list", "icon": "ShoppingCart", "reference": "open-orders",      "children": [] }
+      ]
+    }
+  ]
+}

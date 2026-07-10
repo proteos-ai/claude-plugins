@@ -1,0 +1,26 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "proteos",
+  "description": "Proteos platform skills for Claude Code — build, preview, and deploy Proteos modules with the pro CLI.",
+  "owner": {
+    "name": "Proteos",
+    "url": "https://proteos.ai"
+  },
+  "plugins": [
+    {
+      "name": "module-skills",
+      "description": "Build complete Proteos modules interactively: discovery → entities + permissions → pages/lists/menus → live preview (pro module serve) → hooks/actions/components → deploy.",
+      "source": "./module-skills",
+      "category": "development",
+      "skills": [
+        "./skills/module-builder",
+        "./skills/module-discovery",
+        "./skills/domain-modeling",
+        "./skills/page-design",
+        "./skills/hook-engineer",
+        "./skills/action-engineer",
+        "./skills/component-engineer"
+      ]
+    }
+  ]
+}

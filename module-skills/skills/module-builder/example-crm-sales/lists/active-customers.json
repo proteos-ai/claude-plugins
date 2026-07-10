@@ -1,0 +1,16 @@
+{
+  "slug": "active-customers",
+  "entity_slug": "customer",
+  "module_slug": "crm-sales",
+  "name": "Customers",
+  "columns": [
+    { "attribute": "name",           "label": "Name",           "width": 240 },
+    { "attribute": "status",         "label": "Status",         "width": 120 },
+    { "attribute": "industry",       "label": "Industry",       "width": 180 },
+    { "attribute": "annual_revenue", "label": "Annual revenue", "width": 160 },
+    { "attribute": "owner",          "label": "Owner",          "width": 160 },
+    { "attribute": "created_at",     "label": "Created",        "width": 160 }
+  ],
+  "sorting": [ { "attribute": "created_at", "direction": "desc" } ],
+  "filters": []
+}

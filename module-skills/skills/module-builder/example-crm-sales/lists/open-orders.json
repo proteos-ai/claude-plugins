@@ -1,0 +1,15 @@
+{
+  "slug": "open-orders",
+  "entity_slug": "order",
+  "module_slug": "crm-sales",
+  "name": "Orders",
+  "columns": [
+    { "attribute": "number",      "label": "Order",     "width": 160 },
+    { "attribute": "customer_id", "label": "Customer",  "width": 220 },
+    { "attribute": "status",      "label": "Status",    "width": 130 },
+    { "attribute": "total",       "label": "Total",     "width": 140 },
+    { "attribute": "placed_at",   "label": "Placed",    "width": 160 }
+  ],
+  "sorting": [ { "attribute": "placed_at", "direction": "desc" } ],
+  "filters": []
+}

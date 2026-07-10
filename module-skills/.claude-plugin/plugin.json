@@ -1,0 +1,9 @@
+{
+  "name": "module-skills",
+  "description": "Build complete Proteos modules from scratch, interactively — DDD discovery, entities, pages, lists, menus, permissions, Go hooks/actions, React components — authored locally with the pro CLI, previewed live via pro module serve, deployed with idempotent upserts. Seven chained skills verified against the platform source.",
+  "version": "0.18.0",
+  "author": {
+    "name": "Proteos",
+    "url": "https://proteos.ai"
+  }
+}

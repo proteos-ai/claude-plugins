@@ -1,0 +1,13 @@
+{
+  "slug": "my-active-customers",
+  "list_slug": "active-customers",
+  "module_slug": "crm-sales",
+  "name": "Active accounts",
+  "columns": [],
+  "sorting": [ { "attribute": "annual_revenue", "direction": "desc" } ],
+  "filters": [
+    { "logical_operator": "and",
+      "elements": [ { "field": "status", "operator": "eq", "value": "active" } ],
+      "groups": [] }
+  ]
+}

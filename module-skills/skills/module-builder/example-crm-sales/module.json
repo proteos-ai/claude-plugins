@@ -1,0 +1,9 @@
+{
+  "slug": "crm-sales",
+  "name": "CRM · Sales",
+  "version": "0.1.0",
+  "description": "A minimal sales CRM: customers and the orders they place, with a record-detail page, lists, a saved segment, an app, and a sidebar. A worked example for the platform-designer loop — author entities first, then app → lists → list-views → pages → menus, validate each against schemas/platform.schema.json, then present_entity → present_page / present_list in the workspace.",
+  "dependencies": {
+    "entities": {}
+  }
+}
