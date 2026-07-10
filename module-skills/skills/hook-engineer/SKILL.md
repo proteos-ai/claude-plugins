@@ -46,6 +46,25 @@ Two fundamentally different execution paths:
 the user's write path. Cascade-style cleanup of dependent rows →
 `before_delete` (synchronous, so nothing orphans if it fails — see below).
 
+## CLI preflight
+
+Every command below needs the `pro` binary, a profile pointed at the
+platform, and a signed-in session. If this session hasn't verified that yet,
+run the bundled script first (idempotent — skips whatever is already in
+place):
+
+```sh
+sh scripts/pro-preflight.sh    # from this skill's base directory
+```
+
+It installs `pro` from GitHub Releases of the public `proteos-ai/cli` repo
+(sha256-verified; binaries only — there is no `go install` path), creates and
+activates the `prod` profile (`https://api.proteos.ai`), and attempts
+`pro login` (Auth0 PKCE, browser). Last line `preflight ok — signed in as …`
+→ proceed. `preflight incomplete …` (exit 4) → ask the user to run
+`pro login` in their terminal, then re-run. Details + Windows steps: the
+script header, and the module-builder skill's step 0.
+
 ## Scaffold first
 
 From the **module root** (the command reads `module.json` + `go.mod`):
@@ -305,6 +324,8 @@ pro functions hooks logs <slug> --follow   # tail after triggering a write
 pro functions hooks list|get|activate|deactivate <slug>
 ```
 
-Verify by actually writing a record and confirming the effect: before-hooks
-via the mutation/abort, after-hooks via the side effect + logs (remember
-they're async — give them a second).
+Verify by actually writing a record — prefer the `proteos-data` MCP server
+(`create_record`/`update_record`, then `get_record` to read the effect back)
+over shelling out — and confirm: before-hooks via the mutation/abort,
+after-hooks via the side effect + logs (remember they're async — give them a
+second).

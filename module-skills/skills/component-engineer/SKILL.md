@@ -38,11 +38,30 @@ per-component `package.json`/`tsconfig.json`. Module workflow →
   trust** — it runs in the user's browser. Anything needing real secrets or
   privileged writes goes through an action the component invokes.
 
+## CLI preflight
+
+Every command below needs the `pro` binary, a profile pointed at the
+platform, and a signed-in session. If this session hasn't verified that yet,
+run the bundled script first (idempotent — skips whatever is already in
+place):
+
+```sh
+sh scripts/pro-preflight.sh    # from this skill's base directory
+```
+
+It installs `pro` from GitHub Releases of the public `proteos-ai/cli` repo
+(sha256-verified; binaries only — there is no `go install` path), creates and
+activates the `prod` profile (`https://api.proteos.ai`), and attempts
+`pro login` (Auth0 PKCE, browser). Last line `preflight ok — signed in as …`
+→ proceed. `preflight incomplete …` (exit 4) → ask the user to run
+`pro login` in their terminal, then re-run. Details + Windows steps: the
+script header, and the module-builder skill's step 0.
+
 ## Scaffold first
 
 ```sh
 pro components add <slug>        # from anywhere inside the module tree
-pnpm install                     # REPO ROOT — links workspace deps; build never installs
+pnpm install                     # at the pnpm-workspace root — links @proteos/* deps; build never installs
 pro components validate <slug>   # esbuild dry-run: does it bundle?
 ```
 
@@ -221,16 +240,22 @@ remember Liquid-bound scalars are strings.
 ## Preview loop — three surfaces, use in this order
 
 1. **`pro module serve` (port 5180) — the canonical loop.** The whole module
-   renders in the product-hosted preview app: your component appears as its
-   own tab (props = schema defaults) AND inside the pages that embed it, with
-   the element's Liquid props resolved against a preview record. Every save
+   renders in the module-preview app: your component appears as its own tab
+   (props = schema defaults) AND inside the pages that embed it, with the
+   element's Liquid props resolved against a preview record. Every save
    hot-recompiles the bundle (~100ms, in memory) and reloads the iframe;
    build errors surface in the tab. SDK calls run authenticated via the
    profile token. Navigation/peek are stubbed with a note.
+   **In Claude sessions with the built-in preview tools**, open this in the
+   web preview pane (`preview_start` via `.claude/launch.json`, navigate to
+   the localhost `open preview →` URL — `pro` ≥ v0.17.x proxies the app
+   same-origin) and verify your own render with `preview_snapshot` /
+   `preview_screenshot` after each save; component iframes need a moment to
+   handshake — a blank screenshot right after reload isn't a failure, retry
+   once. See module-builder step 5 for the full pane workflow.
 2. **`pro components preview <slug>` (port 5179)** — the component in
    isolation with an interactive props + pageCtx panel. Good for prop-contract
-   work. Requires the runtime embedded in the `pro` binary
-   (`make cli-install`).
+   work. Release binaries ship the embedded runtime.
 3. **Deployed** — `pro module build && pro module deploy`; the live
    ComponentFrame adds real navigation, peek, and focus-driven token refresh.
    (Live iframe sandbox: `allow-scripts allow-same-origin

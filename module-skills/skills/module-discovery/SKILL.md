@@ -52,11 +52,13 @@ Two situations, handle both gracefully:
   (Step 4b) so the design phase and future sessions inherit it.
 
 Also check the org's live structure regardless — existing entities carry
-conventions and collision risks:
+conventions and collision risks. Prefer the `proteos-admin` MCP server
+(`list_entities`, `list_apps` — structured, no output parsing); fall back to
+the CLI only when it isn't connected:
 
 ```sh
-pro meta entities list -o json     # existing slugs + conventions
-pro meta apps list -o json         # existing apps the new module sits beside
+pro meta entities list -o json     # fallback: existing slugs + conventions
+pro meta apps list -o json         # fallback: existing apps
 ```
 
 ---

@@ -21,7 +21,7 @@ for dir in skills/*/; do
   echo "✓ dist/skills/${name}.zip"
 done
 
-zip -q -r -X dist/module-skills.zip .claude-plugin skills README.md -x "*/.DS_Store"
+zip -q -r -X dist/module-skills.zip .claude-plugin .mcp.json skills README.md -x "*/.DS_Store"
 echo "✓ dist/module-skills.zip (Claude Code plugin bundle)"
 
 echo

@@ -34,6 +34,25 @@ button, **page-design**.
 
 A multi-step thing the user deliberately triggers is an action.
 
+## CLI preflight
+
+Every command below needs the `pro` binary, a profile pointed at the
+platform, and a signed-in session. If this session hasn't verified that yet,
+run the bundled script first (idempotent — skips whatever is already in
+place):
+
+```sh
+sh scripts/pro-preflight.sh    # from this skill's base directory
+```
+
+It installs `pro` from GitHub Releases of the public `proteos-ai/cli` repo
+(sha256-verified; binaries only — there is no `go install` path), creates and
+activates the `prod` profile (`https://api.proteos.ai`), and attempts
+`pro login` (Auth0 PKCE, browser). Last line `preflight ok — signed in as …`
+→ proceed. `preflight incomplete …` (exit 4) → ask the user to run
+`pro login` in their terminal, then re-run. Details + Windows steps: the
+script header, and the module-builder skill's step 0.
+
 ## Scaffold first
 
 From the **module root**:

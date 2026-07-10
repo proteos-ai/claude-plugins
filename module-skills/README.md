@@ -41,6 +41,46 @@ module's `skills/` dir):
 # → dist/module-skills.zip   the whole plugin
 ```
 
+## The `pro` binary — a separate layer
+
+Installing the plugin installs **skills**, not the CLI they drive. The `pro`
+binary ships only as GitHub Release binaries on the public repo
+[`proteos-ai/cli`](https://github.com/proteos-ai/cli) (assets
+`pro_<version>_<os>_<arch>.tar.gz`, `.zip` on Windows, + `checksums.txt`;
+no `go install`, no Homebrew tap yet).
+
+Every `pro`-driving skill (module-builder, module-creator, hook-engineer,
+action-engineer, component-engineer) bundles the same
+`scripts/pro-preflight.sh` and runs it before its first `pro` call:
+
+1. detect/install the platform binary (sha256-verified, `~/.local/bin` or
+   `PRO_INSTALL_DIR`), or skip if `pro version` already matches;
+2. `pro profiles add prod --api-url https://api.proteos.ai` (skip if present)
+   + `pro profiles use prod`;
+3. `pro login` (Auth0 PKCE, browser) with a clear hand-back to the user when
+   headless (`pro login --no-browser` prints the URL); verify `pro whoami`.
+
+Idempotent end to end — re-running a skill with everything in place passes
+straight through. Keeping `pro` current also keeps scaffolded modules in SDK
+lockstep: `pro module init` pins `go.proteos.ai/functions-sdk-go` to the
+CLI's own build version.
+
+## Bundled MCP servers
+
+Installing the plugin also registers the six Proteos platform MCP servers
+([.mcp.json](.mcp.json)): `proteos-knowledge`, `proteos-admin`, `proteos-data`,
+`proteos-agents`, `proteos-workflows`, `proteos-conversations` — so
+module-discovery can ground in the knowledge graph and the builder can inspect
+live org structure without extra setup.
+
+Auth is **OAuth with Dynamic Client Registration** — no token to configure.
+On first use Claude Code runs the browser OAuth flow (re-auth anytime with
+`/mcp`). Optional environment override for non-prod targets:
+
+```sh
+export PROTEOS_MCP_URL=https://mcp.staging.example   # defaults to https://mcp.proteos.ai
+```
+
 ## The skills and how they chain
 
 | Skill | Role | Embedded references |
@@ -78,3 +118,7 @@ pro module build  →  pro module deploy → pro meta modules activate → verif
   async post-commit at-least-once (side effects, idempotent).
 - Preview before deploy: the user approves what they see at the
   `pro module serve` URL, not a JSON diff.
+- Tool split: the `pro` CLI owns the module lifecycle (scaffold, add, build,
+  serve, deploy); the bundled MCP servers own everything live — knowledge,
+  record CRUD, org structure queries — being faster and typed than shell
+  round-trips. CLI `pro meta`/`pro data` only as a no-MCP fallback.

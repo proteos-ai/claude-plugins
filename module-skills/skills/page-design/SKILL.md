@@ -122,8 +122,9 @@ When you change `control`, drop `control_props` — keys are slug-specific.
 ## Design discipline
 
 1. **Get the entity schema first** — attribute names, types, formats, object
-   leaves. In a module: read `entities/<slug>.json`; deployed:
-   `pro meta entities get <slug> -o json`.
+   leaves. In a module: read `entities/<slug>.json`; for a deployed entity:
+   `proteos-admin` MCP `get_entity` (fallback: `pro meta entities get <slug>
+   -o json`).
 2. **Sketch the tree in pseudo-code** before JSON: what's identity (top,
    never collapsed), what's supporting (sections), what's equal-weight facets
    (tabs), what's secondary (collapsed sections), what's related

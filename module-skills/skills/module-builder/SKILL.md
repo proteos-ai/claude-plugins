@@ -114,31 +114,112 @@ Modules can also ship agent-service resources (`prompts/ tools/ mcp-servers/
 agents/ skills/`) and custom connectors (`connectors/<key>/…`) — see
 [reference.md](reference.md).
 
+## Tool choice — CLI vs MCP servers
+
+Two surfaces, clear split:
+
+- **`pro` CLI = the module lifecycle.** Scaffolding (`init`, `hook init`,
+  `action init`, `components add`, `module add …`), building (`build`, `test`,
+  `check`), previewing (`serve`), shipping (`deploy`, `activate`), syncing
+  (`pull`, `clone`), and function logs. These operate on the local module
+  directory — the CLI is the only tool for them.
+- **MCP servers = the live platform.** Knowledge graph (`proteos-knowledge`),
+  reading/creating/editing **records** (`proteos-data`), and inspecting org
+  structure — existing entities, apps, pages, schemas (`proteos-admin`).
+  Prefer these over `pro meta …`/`pro data …` shell calls: structured tool
+  calls are faster, typed, and need no output parsing. Fall back to the CLI
+  equivalents only when the MCP servers aren't connected.
+
+Rule of thumb: **files on disk → CLI; anything live in the platform → MCP.**
+One-off structure mutations outside a module (rare) can go through either
+`proteos-admin` upserts or `pro meta … apply` — but module content always
+ships via `pro module deploy`, never ad-hoc.
+
 ## The workflow
 
-### 0. Preflight
+### 0. Preflight — install & connect the CLI
+
+Two install layers; don't confuse them:
+
+1. **These skills** install as a Claude Code plugin
+   (`claude plugin marketplace add proteos-ai/claude-plugins &&
+   claude plugin install module-skills@proteos`). That ships the instructions
+   and this preflight script — **not** the binary.
+2. **The `pro` binary** ships only as binaries on GitHub Releases of the
+   public repo `proteos-ai/cli` — no `go install` path (the repo has no Go
+   source), no Homebrew tap yet. This step covers that layer.
+
+Before the first `pro` command of a session, run the bundled preflight from
+this skill's base directory. It is idempotent: a re-run detects an installed
+`pro`, an existing `prod` profile, and a valid session, and passes straight
+through.
+
+```sh
+sh scripts/pro-preflight.sh                    # latest release
+sh scripts/pro-preflight.sh --version 0.18.1   # pin a specific version
+```
+
+What it does, in order:
+
+1. **Binary** — skip if `pro version` already matches the target; otherwise
+   detect the platform (`uname` → darwin/linux × amd64/arm64), resolve the
+   latest release tag from the GitHub API (or use the pin), download
+   `pro_<ver>_<os>_<arch>.tar.gz` + `checksums.txt` from the release
+   (public repo, no token), **verify the sha256** (abort on mismatch), and
+   install the single `pro` binary to `~/.local/bin` (override with
+   `PRO_INSTALL_DIR`; warns if the dir isn't on PATH). Windows has no POSIX
+   sh — the script header carries the manual `pro_<ver>_windows_<arch>.zip`
+   steps (`pro.exe` inside).
+2. **Profile** — `pro profiles add prod --api-url https://api.proteos.ai`
+   (skipped when `prod` already exists in `pro profiles list`) then
+   `pro profiles use prod`.
+3. **Sign-in** — `pro whoami` already valid → done. Else `pro login` (Auth0
+   authorization-code + PKCE; opens a browser — generally works inside Claude
+   Code); the token + refresh token land in the active `prod` profile at
+   `~/.proteos/config.json`.
+
+Read the **last line** of its output:
+
+- `preflight ok — signed in as …` → proceed; report the identity.
+- `preflight incomplete — … run 'pro login'` (exit 4) → binary + profile are
+  ready but sign-in needs the user. Do **not** hard-fail or loop retries.
+  Tell them: *"Couldn't complete sign-in automatically — run `pro login` in
+  your terminal (with the prod profile active) to finish."*
+  (`pro login --no-browser` prints the sign-in URL for headless setups.)
+  Wait, then re-run the preflight to confirm.
+- Any other non-zero exit → hard error; report it verbatim. Usual causes:
+  unsupported platform, sha256 mismatch, unwritable install dir
+  (`PRO_INSTALL_DIR=<dir>` fixes the last).
+
+**Version lockstep.** `pro module init` pins `go.proteos.ai/functions-sdk-go`
+to the CLI's own build version (`--sdk-version` defaults to it) — keeping
+`pro` current keeps scaffolded modules compiling against the matching SDK. If
+`pro version` lags the latest release, offer the user the upgrade (same
+script; it replaces the binary in place).
+
+Then confirm the working state:
 
 ```sh
 pro whoami                              # profile + API URL resolve?
 pro meta entities list --page-size 1    # token reads?
 ```
 
-No profile? `pro login` (browser OAuth) or `pro profiles add <name> --api-url
-<url>` + `pro set-token`; env overrides `PROTEOS_API_URL`/`PROTEOS_API_TOKEN`
-also work. If `pro` is missing entirely, stop and tell the user how to install
-it.
+Non-prod targets still work the classic way — `pro profiles add <name>
+--api-url <url>` + `pro set-token`, or env
+`PROTEOS_API_URL`/`PROTEOS_API_TOKEN`; the preflight's `prod` profile is the
+default path, not the only one.
 
 ### 1. Discover (GATE)
 
 Run **module-discovery**: interview the user, ground in the knowledge graph
 when a knowledge MCP is connected, get the playback + entity shortlist
 **signed off**, capture it (graph or `DISCOVERY.md`), and record the **review
-preference** (data-first vs visual-first). Also collect from the org:
+preference** (data-first vs visual-first). Also inspect the org — slugs are
+**org-wide unique** and conventions should match:
 
-```sh
-pro meta entities list -o json    # slugs are ORG-WIDE unique — avoid collisions
-pro meta apps list -o json        # match existing conventions
-```
+- Preferred: `proteos-admin` MCP — `list_entities`, `list_apps` (+ `get_entity`
+  for anything you'll extend).
+- Fallback (no MCP): `pro meta entities list -o json`, `pro meta apps list -o json`.
 
 ### 2. Scaffold
 
@@ -199,37 +280,96 @@ previewing — a file that fails schema renders wrong or is rejected on deploy.
 
 ### 5. Preview live + iterate with the user (the core loop)
 
-```sh
-pro module serve        # port 5180; falls back to a free port if taken
-```
+`pro module serve` watches the module, serves the data API on port 5180
+(free-port fallback), and — with `pro` ≥ v0.17.x — **proxies the
+module-preview app itself through the local port** (look for
+`(proxying the module-preview app from …)` in its output), so the whole UI is
+same-origin `http://127.0.0.1:<port>`. What renders: the **real platform
+renderers** — entities as the schema designer, pages with a deterministic
+sample record, lists as the real table, components **live** in the runtime
+iframe (authenticated SDK calls via the profile token), hooks/actions as Go
+source + build status. **Every save hot-updates over SSE**: manifest edits
+re-render in place; component edits recompile in ~100ms; hook/action edits
+rebuild wasm in the background and flip a green `compiled` / red
+`build failed` badge with the **verbatim compiler error**.
 
-Serve watches the module and prints two URLs — **send the second one to the
-user as a clickable link** and keep serve running in the background:
+#### Preferred: the Claude web preview pane (`preview_*` tools available)
+
+When the harness exposes the built-in preview tools (`preview_start`,
+`preview_eval`, `preview_screenshot`, `preview_snapshot`, `preview_logs`, …),
+render the preview **inline next to the chat** — the user watches every
+hot-update live, and you can verify your own work:
+
+1. **Register the server in `.claude/launch.json`** at the project root
+   (create if missing):
+
+   ```json
+   {
+     "version": "0.0.1",
+     "configurations": [
+       {
+         "name": "<module-slug>-preview",
+         "runtimeExecutable": "pro",
+         "runtimeArgs": ["module", "serve"],
+         "cwd": "<absolute path to the module root>",
+         "port": 5180
+       }
+     ]
+   }
+   ```
+
+2. **Start with `preview_start`, not Bash.** If it reports the port taken by a
+   non-preview `pro` process, a previous serve is still running — stop that
+   background task first (never stack a second serve on a fallback port), then
+   retry `preview_start`.
+3. **Navigate the pane to the module-preview app.** Read `preview_logs` for
+   `open preview → http://127.0.0.1:<port>/module-preview/?server=…`, then:
+
+   ```js
+   // preview_eval
+   window.location.href = 'http://127.0.0.1:<port>/module-preview/?server=http%3A%2F%2F127.0.0.1%3A<port>'
+   ```
+
+   Why localhost: the pane **refuses navigation to external origins** — it
+   stays pinned to the localhost server; the CLI's local proxy is what makes
+   the UI same-origin.
+4. **Verify what the user sees — never assume.** After every meaningful
+   change: reload (`preview_eval`: `window.location.reload()`), wait ~3s for
+   the SSE hot-update/recompile, then check with `preview_snapshot` (text/
+   structure) or `preview_screenshot` (layout) BEFORE telling the user it's
+   done. Two session-proven gotchas:
+   - a reload resets the workspace tabs — re-open the artifact under review by
+     clicking its sidebar button (`preview_eval` + a querySelector on the
+     button text) before screenshotting;
+   - component iframes take a moment to handshake — a blank screenshot right
+     after reload is not a failure; wait and retry once.
+
+#### Fallback: send the URL (no preview tools, or `pro` too old to proxy)
+
+Run `pro module serve` in the background and **send the printed preview URL to
+the user as a clickable link**:
 
 ```
 ▶ module data → http://127.0.0.1:5180
 ▶ open preview → <app-url>/module-preview/?server=http%3A%2F%2F127.0.0.1%3A5180
 ```
 
-- `--app-url` defaults from the profile (`api.*` → `app.*`; localhost →
-  `http://localhost:5173`). If derivation fails it warns — pass `--app-url`
-  explicitly.
-- The preview renders with the **real platform renderers**: entities as the
-  schema designer, pages with a deterministic sample record, lists as the real
-  table, components **live** in the runtime iframe (authenticated SDK calls
-  via the profile token), hooks/actions as Go source + build status.
-- **Every save hot-updates the preview** over SSE: manifest edits re-render in
-  place; component edits recompile in ~100ms; hook/action edits rebuild wasm
-  in the background and the preview flips a green `compiled` / red
-  `build failed` badge showing the **verbatim compiler error**.
+An older CLI only prints the `https://app.proteos.ai/module-preview/?server=…`
+form — the preview pane can't render that external origin; the clickable link
+is the path. `--app-url` defaults from the profile (`api.*` → `app.*`;
+localhost → `http://localhost:5173`); if derivation fails it warns — pass
+`--app-url` explicitly.
+
+#### Both paths
+
 - Honor the review preference: **data-first** → walk entities in the preview
   sidebar first, then pages/lists; **visual-first** → lead with pages/lists,
   open entity tabs only on request.
 - Run ONE serve per module. Re-invoking stacks a second server on a fallback
-  port — kill the previous background task first.
-- Iterate: user reacts in the browser → you edit files → preview follows.
-  Surface non-obvious trade-offs (embed vs relate, tabs vs sections) as you
-  go. **Deploy only after the user approves the preview.**
+  port — kill the previous one first.
+- Iterate: the user reacts to what they see → you edit files → the preview
+  follows. Surface non-obvious trade-offs (embed vs relate, tabs vs sections)
+  as you go. **Deploy only after the user approves the preview.**
 
 ### 6. Behavior — hooks, actions, components (only if the domain needs it)
 
@@ -237,14 +377,16 @@ Scaffold **from the module root** (`hook init`/`action init` require cwd =
 module root; `components add` works anywhere inside the tree):
 
 ```sh
-pro hook init <slug> --entity <entity> --event before_create   # or before_update|before_delete
+pro hook init <slug> --entity <entity> --event before_create   # any of before_*|after_* create/update/delete
 pro action init <slug> --scope entity --entity <entity>        # or --scope global
-pro components add <slug>                                      # then: pnpm install at repo root
+pro components add <slug>                                      # then: pnpm install at the workspace root
 ```
 
-- Hook handler → **hook-engineer**. ⚠️ Only `before_*` events are dispatched
-  by the platform today; the CLI accepts `after_*` but they never fire —
-  author everything as before-hooks.
+- Hook handler → **hook-engineer**. All six events dispatch: `before_*` run
+  synchronously in the write path (validate, mutate, abort); `after_*` run
+  **asynchronously post-commit** via record events — at-least-once, so
+  idempotent handlers. Side effects (denormalization, sync, external calls)
+  belong in `after_*`; cascade cleanup in `before_delete`.
 - Action `params`/`returns` (Attribute[] in `action.json`) + handler →
   **action-engineer**. Wire an entity action to a page toolbar button via the
   page's `actions[]` (`"action": "<action-slug>"`).
@@ -252,9 +394,10 @@ pro components add <slug>                                      # then: pnpm inst
   **component-engineer**. Reference from a page `component` element
   (`component_slug`).
 
-First hook/action in a repo-workspace module? Add it to the Go workspace once
-from the repo root: `go work use ./modules/<slug>` — otherwise build fails
-with "not one of the workspace modules listed in go.work". The generated
+A standalone module builds with its own `go.mod` — nothing to wire. But if
+the module sits inside a repo that uses a Go workspace (`go.work`), add it
+once from that workspace root: `go work use ./<module-dir>` — otherwise build
+fails with "not one of the workspace modules listed in go.work". The generated
 `main.go` imports `gen/domain` types that **don't exist until the first
 `pro module build`** (codegen) — build before expecting the editor to resolve.
 
@@ -291,14 +434,19 @@ activated") — ignore it.
 
 ### 9. Verify for real
 
-Schema-valid ≠ correct. After deploy:
+Schema-valid ≠ correct. After deploy (MCP-first — CLI in parentheses as the
+no-MCP fallback):
 
-- `pro meta entities get <slug> -o json` — attributes landed.
+- Attributes landed: `proteos-admin` `get_entity` (`pro meta entities get
+  <slug> -o json`).
 - Open the app in the web client: menu shows, list loads, record page renders.
-- Create/update a record to fire hooks; press the page action button; check
-  `pro functions hooks logs <slug> --follow` / `pro functions actions logs
-  <slug>`.
-- `pro meta variables list` — no secret got blanked.
+- Fire the hooks: create/update a record via `proteos-data` `create_record` /
+  `update_record` — faster and typed vs shelling out; read it back with
+  `get_record`/`list_records` to confirm mutations stuck. Press the page
+  action button. Tail `pro functions hooks logs <slug> --follow` /
+  `pro functions actions logs <slug>` (logs are CLI-only).
+- Variables intact: `proteos-admin` `list_variables` (`pro meta variables
+  list`) — no value got blanked.
 
 Don't claim success without exercising the deployed behavior.
 
@@ -322,7 +470,7 @@ out-of-band after deploy), and deploy never overwrites the stored value
 reach a client does NOT belong in a module variable — keep it server-side
 (e.g. behind an action). Re-deploying an EMPTY non-secret `value` over a
 populated one blanks it (unchanged values are skipped) — verify with
-`pro meta variables list`.
+`proteos-admin` `list_variables` (or `pro meta variables list`).
 
 ## Updating an existing module
 
@@ -343,11 +491,12 @@ populated one blanks it (unchanged values are skipped) — verify with
 | Field renders `Unknown attribute · X` | `field.attribute` ≠ entity attribute name (casing drift) | match the snake_case name exactly |
 | Records 403 / list empty / hook can't write | new entity has no role grant | `pro module add permission` × read/write/delete (step 3) |
 | Hook/action missing after deploy | `dist/` stale or absent | `pro module build`, then deploy |
-| Hook bound to `after_*` never fires | platform dispatches `before_*` only | rebind to a `before_*` event |
-| Build: "not one of the workspace modules in go.work" | module dir not in root go.work | `go work use ./modules/<slug>` once |
+| After-hook seems to run twice / late | `after_*` dispatch is async, at-least-once | make the handler idempotent (hook-engineer) |
+| Build: "not one of the workspace modules in go.work" | module sits in a repo with a `go.work` that doesn't list it | `go work use ./<module-dir>` once from the workspace root |
 | Codegen can't resolve `domain.X` | peer entity not in `dependencies.entities` / peer not deployed | add the pin + deploy the peer first |
 | Menu icon renders placeholder | icon not lucide PascalCase | `FileText`, `Users`, `TrendingUp` |
 | Slug collision on deploy | slugs are org-wide (module doesn't namespace) | pick a distinct slug |
+| Preview pane can't render the app.proteos.ai URL | pane refuses external origins; old `pro` doesn't proxy locally | upgrade `pro` (≥ v0.17.x proxies the preview app through the local port), or send the URL to the user as a clickable link |
 | Preview URL 404s | web app doesn't host `/module-preview/` | deployed env, or run the web dev server + `--app-url` |
 | Second serve on a weird port | previous serve still running | kill the old background task first |
 | Bridge rows orphaned after parent delete | assumed `on_delete` cascades | delete dependents in a `before_delete` hook |
@@ -359,7 +508,7 @@ populated one blanks it (unchanged values are skipped) — verify with
 pro whoami · pro login · pro profiles list|use|add
 pro module init <slug> [-y] [--name <n>]
 pro module add permission|role|variable …
-pro hook init <slug> --entity <e> --event before_create|before_update|before_delete   # cwd = module root
+pro hook init <slug> --entity <e> --event <before_*|after_*> (create|update|delete)   # cwd = module root
 pro action init <slug> --scope entity|global [--entity <e>]                           # cwd = module root
 pro components add <slug> · pro components validate <slug> · pro components preview <slug>  # component-only preview, port 5179
 pro module build [--verbose] · pro module test · pro module check
@@ -371,8 +520,9 @@ pro functions hooks|actions list|get|activate|deactivate|logs <slug> [--follow]
 
 ## What this skill does NOT do
 
-- **Records/data** (creating customers, orders): that's the `pro data` surface
-  — out of scope; the module builds structure, not rows.
+- **Records/data** (creating customers, orders): that's the `proteos-data`
+  MCP server (CLI `pro data` as fallback) — out of scope; the module builds
+  structure, not rows.
 - **Users, orgs, assigning users to roles**: platform administration. A module
   DOES ship role definitions + entity grants (`roles.json`,
   `permissions.json`) — creating users and putting them IN roles is not module
