@@ -243,6 +243,13 @@ MUST validate its inputs and verify the caller — canonically a token/HMAC
 **header** via `ctx.Header(...)` compared against a module variable (see the
 reference webhook: `modules/google-connector/actions/receive-calendar-webhook`).
 
+⚠️ Only set `"is_public": true` when the user **explicitly asked** for an
+unauthenticated surface (a webhook, a public page's data source) — never as a
+convenience. Public actions are also the ONLY data path for components on
+`type: "public"` pages (invoked via `invokePublic`, no caller verification
+possible there), so whatever such an action returns is effectively
+world-readable: expose the minimal read, never a generic query passthrough.
+
 ## Patterns
 
 - **Single-call state transition** — bundle "set flag + fill object" so hooks

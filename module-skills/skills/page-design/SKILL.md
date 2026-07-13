@@ -18,8 +18,13 @@ description: >
 Pages are the detail screens of the Proteos UI. An **entity-detail page**
 binds to one entity and renders one record; a **platform page**
 (`"type": "platform"`, no `entity_slug`) is a standalone screen — dashboard,
-board, explorer — usually built from `component` elements. The `layout` is a
-typed tree of elements.
+board, explorer — usually built from `component` elements. Two more
+standalone types: **kiosk** (`"type": "kiosk"` — chromeless at `/k/…`, still
+authenticated) and **public** (`"type": "public"` — chromeless AND
+unauthenticated at `/p/…`). ⚠️ A public page's layout is world-readable —
+author `"type": "public"` only on the user's explicit request (see
+page-reference.md §1 for the full rules). The `layout` is a typed tree of
+elements.
 
 > **The authoritative wire reference is
 > [page-reference.md](page-reference.md)** — every

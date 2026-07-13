@@ -22,6 +22,34 @@ keep it open while designing a record-detail screen.
   screen with no record context: a dashboard, a Kanban board, a report. Built
   from `text`, `divider`, and especially `component` elements that fetch their
   own data. Reached from a menu with `{ "type": "page", "reference": "<slug>" }`.
+- **Kiosk page** (`type: "kiosk"`, no `entity_slug`) — a platform page served
+  with **no app chrome** (no sidebar/topbar) at `/k/<orgId>/<pageSlug>`, but
+  still **authenticated** (login redirect). For wallboards, TVs, embeds.
+  Components run with the full authed sdk, exactly like on a platform page.
+- **Public page** (`type: "public"`, no `entity_slug`) — no chrome AND
+  **no authentication**: anyone on the internet with the URL
+  `/p/<orgId>/<pageSlug>` can open it. See the warning below.
+
+> ⚠️ **`type: "public"` publishes the page to the internet — never set it
+> unless the user explicitly asked for a public page.** "Make me a dashboard"
+> means `platform`. Making a page public means:
+> - The **entire layout is world-readable**: every `text` element and every
+>   literal component `props` value ships to anonymous visitors. Never bake
+>   secrets, internal notes, or personal data into a public page's layout.
+> - Every referenced component must set `is_public: true` in its
+>   `manifest.json` (its compiled bundle becomes world-downloadable; deploy
+>   rejects a public page referencing a non-public component).
+> - Components on a public page get a **restricted sdk**: the only platform
+>   reach is `sdk.functions.actions.invokePublic(orgId, slug, params)` calling
+>   an `is_public` **global action** — no `data`, `meta`, `storage`, etc. Data
+>   the page shows must be explicitly exposed through such an action, which
+>   runs server-side as the action's creator.
+> - `field` / `related_list` elements are forbidden (as on all non-record
+>   pages) — there is no record context and no authed query path.
+>
+> Confirm the public-exposure intent with the user before authoring
+> `type: "public"` or `is_public: true` anywhere; repeat what will become
+> publicly reachable when you do.
 
 ```json
 {
@@ -39,8 +67,8 @@ keep it open while designing a record-detail screen.
 |---|---|
 | `slug` | kebab-case, unique. |
 | `name` | display name in the page picker (`"Customer detail"`, not `"Page for customers"`). |
-| `type` | `record` (default) or `platform`. |
-| `entity_slug` | **required for `record`, absent for `platform`.** Immutable after create. |
+| `type` | `record` (default), `platform`, `kiosk`, or `public` (⚠ world-readable — only on explicit user request). |
+| `entity_slug` | **required for `record`, absent for all other types.** Immutable after create. |
 | `module_slug` | owning module. |
 | `actions[]` | toolbar buttons `{ label, icon (lucide PascalCase), action }`. `action` is a free string the route resolves — usually a module-action slug. |
 | `layout` | the typed element tree (§2). **Full-tree replacement** on every update — no element-level patch. Preserve element `id`s when refactoring. |
@@ -352,7 +380,8 @@ never embedded in the page. Offline renderer value shapes:
 ## 9. Page checklist
 
 - [ ] Validates against `#/$defs/createPageRequest`.
-- [ ] Record page has `entity_slug`; platform page sets `type:"platform"` and omits it.
+- [ ] Record page has `entity_slug`; platform/kiosk/public pages set their `type` and omit it.
+- [ ] `type:"public"` ONLY on the user's explicit request (world-readable layout!); every component it references sets `is_public: true` and fetches data solely via `is_public` global actions.
 - [ ] Every `field.attribute` matches a real snake_case attribute; object binds are dot-paths to leaves.
 - [ ] Every element has a stable `id`; tab ids are unique and match `default_tab_id`.
 - [ ] Overview is first and not collapsible; system/audit fields are low or omitted.

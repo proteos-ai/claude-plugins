@@ -269,6 +269,16 @@ Author in dependency order so every reference resolves as you go:
    dashboard page hosting components). Delegate the `layout` tree to
    **page-design**;
    the page-design skill's page-reference.md.
+   Two more standalone types exist: `"kiosk"` (no app chrome at
+   `/k/<orgId>/<slug>`, still authenticated — wallboards/embeds) and
+   `"public"` (no chrome AND **no auth** at `/p/<orgId>/<slug>`).
+   ⚠️ **`"public"` publishes the page's entire layout to the internet — only
+   author it when the user explicitly asked for a public page, and confirm
+   what becomes world-readable.** A public page may only reference components
+   whose `manifest.json` sets `is_public: true` (deploy rejects otherwise),
+   and those components can fetch data solely through `is_public` global
+   actions (`invokePublic`) — the same express-permission rule applies to
+   flagging actions/components public. Details: page-reference.md §1.
 5. `menus/<slug>.json` — sidebar tree under an app; `items[].type` ∈
    `link|group|entity|page|list`, `reference` = target slug.
    [menu-reference.md](menu-reference.md).
@@ -285,13 +295,50 @@ previewing — a file that fails schema renders wrong or is rejected on deploy.
 module-preview app itself through the local port** (look for
 `(proxying the module-preview app from …)` in its output), so the whole UI is
 same-origin `http://127.0.0.1:<port>`. What renders: the **real platform
-renderers** — entities as the schema designer, pages with a deterministic
-sample record, lists as the real table, components **live** in the runtime
-iframe (authenticated SDK calls via the profile token), hooks/actions as Go
-source + build status. **Every save hot-updates over SSE**: manifest edits
-re-render in place; component edits recompile in ~100ms; hook/action edits
-rebuild wasm in the background and flip a green `compiled` / red
-`build failed` badge with the **verbatim compiler error**.
+renderers** — entities as the schema designer, pages with your mock record
+(else a deterministic sample), lists as the real table over your mock rows,
+components **live** in the runtime iframe (SDK calls answered by the serve
+process's mock API, non-mocked routes proxied to the real API with the
+profile token), hooks/actions as Go source + build status. **Every save
+hot-updates over SSE**: manifest edits re-render in place; component edits
+recompile in ~100ms; hook/action edits rebuild wasm in the background and
+flip a green `compiled` / red `build failed` badge with the **verbatim
+compiler error**.
+
+#### Mock data — author it as part of the loop (never deployed)
+
+Without mock data, pages/lists render generated lorem rows. Author it
+whenever you create entities, pages, lists, or components:
+
+```
+mock-data/
+  <entity-slug>.json          # JSON array of records for that entity
+  api.json                    # stubbed responses for component SDK calls
+components/<slug>/mock.json   # standalone-preview props + page context
+```
+
+- `mock-data/<entity-slug>.json`: lists of the entity render ALL rows, pages
+  the FIRST row, related lists resolve from the same pool. Rows without `id`
+  get one injected (`<slug>-mock-<n>`). `relation`/`user` values as
+  `{"id": "...", "label": "..."}` — authoring-only shape; the mock API
+  answers component SDK calls in the live wire shape (relation → bare id
+  string, user → `{type, id}`, no label). 5–10 varied rows (every enum
+  state, some empty optionals) preview far better than 2 uniform ones.
+- Component `sdk.data.records.*` calls on a mocked entity are answered
+  locally (filters/sort/pagination work; writes mutate an in-memory copy —
+  saving the file resets it). Stub other routes (action invokes, …) in
+  `mock-data/api.json`:
+  `[{"method": "POST", "path": "/functions/v1/actions/<slug>/invoke", "response": {"result": {...}}}]`
+  — wildcards `*` / trailing `**`, first match wins, response verbatim
+  (action stubs MUST wrap in `{"result": ...}`). Everything non-mocked
+  passes through to the real API; `pro module serve --live-api` bypasses the
+  mock API entirely.
+- `components/<slug>/mock.json`
+  (`{"props": {...}, "record": {...}, "entity_slug": "..."}`): props overlay
+  the schema defaults in the standalone component tab; the record (or the
+  first mock row of `entity_slug`) becomes the page-context record.
+
+Every mock file edit hot-updates the preview like any other save.
 
 #### Preferred: the Claude web preview pane (`preview_*` tools available)
 

@@ -461,13 +461,13 @@
         "slug": { "$ref": "#/$defs/slug" },
         "name": { "type": "string" },
         "module_slug": { "$ref": "#/$defs/slug" },
-        "type": { "type": "string", "enum": ["record", "platform"], "description": "defaults to 'record'. record pages require entity_slug; platform pages must omit it." },
+        "type": { "type": "string", "enum": ["record", "platform", "kiosk", "public"], "description": "defaults to 'record'. record pages require entity_slug; platform/kiosk/public pages must omit it. kiosk = authenticated but chromeless (/k/...); public = UNAUTHENTICATED + chromeless (/p/...) — the whole layout becomes world-readable, so only set 'public' when the user explicitly asked for a public page." },
         "entity_slug": { "$ref": "#/$defs/slug" },
         "actions": { "type": "array", "items": { "$ref": "#/$defs/pageAction" } },
         "layout": { "$ref": "#/$defs/pageLayout" }
       },
       "allOf": [
-        { "if": { "properties": { "type": { "const": "platform" } }, "required": ["type"] },
+        { "if": { "properties": { "type": { "enum": ["platform", "kiosk", "public"] } }, "required": ["type"] },
           "then": { "not": { "required": ["entity_slug"] } },
           "else": { "required": ["entity_slug"] } }
       ]

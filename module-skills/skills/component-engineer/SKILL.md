@@ -65,9 +65,21 @@ pnpm install                     # at the pnpm-workspace root — links @proteos
 pro components validate <slug>   # esbuild dry-run: does it bundle?
 ```
 
-`manifest.json` = `{ slug, module_slug, name, description }` — the builder
-overwrites `slug`/`module_slug` from the directory + module.json, so drift
-can't ship.
+`manifest.json` = `{ slug, module_slug, name, description, is_public? }` — the
+builder overwrites `slug`/`module_slug` from the directory + module.json, so
+drift can't ship.
+
+> ⚠️ **`is_public: true` makes the compiled bundle world-downloadable**
+> (unauthenticated `GET /meta/v1/public/orgs/{orgId}/components/{slug}/bundle`)
+> and is required for any component placed on a `type: "public"` page. Only
+> set it when the user explicitly asked for a public page/component. On a
+> public page the component gets a **restricted sdk**: the only platform call
+> that works is `sdk.functions.actions.invokePublic(orgId, slug, params)`
+> against an `is_public` global action — `data`/`meta`/`storage`/etc. throw.
+> `authToken` is empty there; branch on `useRuntime().isPublic` if a component
+> must serve both worlds. Full-replacement on deploy: omitting the field flips
+> a previously public component back to private (rejected with 409 while a
+> public page still references it).
 
 ## The runtime contract (read this twice)
 
@@ -241,11 +253,13 @@ remember Liquid-bound scalars are strings.
 
 1. **`pro module serve` (port 5180) — the canonical loop.** The whole module
    renders in the module-preview app: your component appears as its own tab
-   (props = schema defaults) AND inside the pages that embed it, with the
-   element's Liquid props resolved against a preview record. Every save
-   hot-recompiles the bundle (~100ms, in memory) and reloads the iframe;
-   build errors surface in the tab. SDK calls run authenticated via the
-   profile token. Navigation/peek are stubbed with a note.
+   (props = schema defaults overlaid by your `mock.json`) AND inside the
+   pages that embed it, with the element's Liquid props resolved against a
+   preview record. Every save hot-recompiles the bundle (~100ms, in memory)
+   and reloads the iframe; build errors surface in the tab. SDK calls hit the
+   serve process's mock API: mocked routes answered locally, the rest proxied
+   to the real API with the profile token (`--live-api` to bypass).
+   Navigation/peek are stubbed with a note.
    **In Claude sessions with the built-in preview tools**, open this in the
    web preview pane (`preview_start` via `.claude/launch.json`, navigate to
    the localhost `open preview →` URL — `pro` ≥ v0.17.x proxies the app
@@ -265,6 +279,30 @@ Build output: `dist/components/<slug>.js` + `.bundle.json`; deploy POSTs
 metadata + bundle + source tar.gz (node_modules/dist excluded) to
 metadata-service — idempotent upsert; components deploy after dist
 hooks/actions, before skills.
+
+## Mock data — preview-only, author it alongside the component
+
+Two files drive a convincing preview (neither ever deploys):
+
+- **`components/<slug>/mock.json`** —
+  `{"props": {...}, "record": {...}, "entity_slug": "..."}`. `props` overlay
+  the props-schema defaults in the standalone tab (Liquid-bound scalars are
+  strings — mock them as strings). `record` (or, with only `entity_slug`, the
+  first row of that entity's mock data) becomes the page-context record.
+  Saving it recompiles the bundle so the iframe remounts with the new values.
+- **Module-level `mock-data/`** — `mock-data/<entity-slug>.json` (array of
+  records) feeds the pages/lists that embed your component AND the mock API
+  your SDK calls hit: `sdk.data.records.*` on a mocked entity is answered
+  locally with working filters/sort/pagination; writes mutate an in-memory
+  copy (file save resets). Responses come in the LIVE wire shape — the
+  authored `{id, label}` relation/user values normalize to a bare id string
+  (relation) / `{type, id}` (user), so write component code against
+  production shapes, never against the label. Stub anything else (e.g.
+  action invokes) in `mock-data/api.json`:
+  `[{"method": "POST", "path": "/functions/v1/actions/<slug>/invoke", "response": {"result": {...}}}]`
+  — path wildcards `*` (one segment) / trailing `**`, first match wins,
+  response verbatim, so action stubs MUST wrap in `{"result": ...}`.
+  Non-mocked routes pass through to the real API with the profile token.
 
 ## Wiring into a page
 
