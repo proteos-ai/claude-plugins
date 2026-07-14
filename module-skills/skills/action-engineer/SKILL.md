@@ -245,10 +245,13 @@ reference webhook: `modules/google-connector/actions/receive-calendar-webhook`).
 
 ⚠️ Only set `"is_public": true` when the user **explicitly asked** for an
 unauthenticated surface (a webhook, a public page's data source) — never as a
-convenience. Public actions are also the ONLY data path for components on
-`type: "public"` pages (invoked via `invokePublic`, no caller verification
-possible there), so whatever such an action returns is effectively
-world-readable: expose the minimal read, never a generic query passthrough.
+convenience. On `type: "public"` pages, public actions are the only path for
+**writes and computed/aggregated data** (invoked via `invokePublic`, no
+caller verification possible there) — plain read-only record access is
+better served by setting the entity's `public_record_access: ["read"]` (see
+domain-modeling) instead of writing a passthrough action. Whatever a public action returns is
+effectively world-readable: expose the minimal read, never a generic query
+passthrough.
 
 ## Patterns
 

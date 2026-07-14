@@ -39,11 +39,18 @@ keep it open while designing a record-detail screen.
 > - Every referenced component must set `is_public: true` in its
 >   `manifest.json` (its compiled bundle becomes world-downloadable; deploy
 >   rejects a public page referencing a non-public component).
-> - Components on a public page get a **restricted sdk**: the only platform
->   reach is `sdk.functions.actions.invokePublic(orgId, slug, params)` calling
->   an `is_public` **global action** — no `data`, `meta`, `storage`, etc. Data
->   the page shows must be explicitly exposed through such an action, which
->   runs server-side as the action's creator.
+> - Components on a public page get a **restricted sdk** with exactly three
+>   platform reaches, all unauthenticated:
+>   - `sdk.functions.actions.invokePublic(orgId, slug, params)` calling an
+>     `is_public` **global action** (runs server-side as the action's
+>     creator) — the only path for writes or computed/aggregated data;
+>   - **read-only records** of entities with `public_record_access: ["read"]` via
+>     `sdk.data.records.list/listPage/get` (org bound automatically; create/
+>     update/delete throw) plus their definitions via `sdk.meta.entities.get`;
+>   - downloads of `public_access: ["read"]` files via `sdk.storage.files.download` /
+>     `publicDownloadUrl` (e.g. images embedded on the page).
+>   Everything else (`account`, `agents`, `knowledge`, authed `data`/`meta`/
+>   `storage`) throws.
 > - `field` / `related_list` elements are forbidden (as on all non-record
 >   pages) — there is no record context and no authed query path.
 >
@@ -381,7 +388,7 @@ never embedded in the page. Offline renderer value shapes:
 
 - [ ] Validates against `#/$defs/createPageRequest`.
 - [ ] Record page has `entity_slug`; platform/kiosk/public pages set their `type` and omit it.
-- [ ] `type:"public"` ONLY on the user's explicit request (world-readable layout!); every component it references sets `is_public: true` and fetches data solely via `is_public` global actions.
+- [ ] `type:"public"` ONLY on the user's explicit request (world-readable layout!); every component it references sets `is_public: true` and fetches data solely via `is_public` global actions, read-only records of `public_record_access: ["read"]` entities, or `public_access: ["read"]` file downloads — each of those flags also requires the user's express permission.
 - [ ] Every `field.attribute` matches a real snake_case attribute; object binds are dot-paths to leaves.
 - [ ] Every element has a stable `id`; tab ids are unique and match `default_tab_id`.
 - [ ] Overview is first and not collapsible; system/audit fields are low or omitted.

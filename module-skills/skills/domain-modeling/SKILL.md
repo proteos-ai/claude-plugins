@@ -199,6 +199,12 @@ elsewhere, queried independently, or unbounded in cardinality.
 - **Assuming `on_delete: cascade` cleans up** → it doesn't; write the hook.
 - **Non-snake_case attribute names** → `customer_id`, `is_signed`; no
   exceptions.
+- **`public_record_access: ["read"]` as a convenience** → it makes EVERY record of
+  the entity world-readable unauthenticated (plus the entity definition). Only
+  with the user's explicit ask (e.g. data shown on a public page); `read` is
+  the only accepted value today (`write`/`delete` reserved), empty `[]` =
+  private, and full-replacement means omitting it on a later deploy resets it.
+  Details: entity-reference.md §1.
 
 ## Skeleton payload
 

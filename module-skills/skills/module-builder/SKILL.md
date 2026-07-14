@@ -277,8 +277,11 @@ Author in dependency order so every reference resolves as you go:
    what becomes world-readable.** A public page may only reference components
    whose `manifest.json` sets `is_public: true` (deploy rejects otherwise),
    and those components can fetch data solely through `is_public` global
-   actions (`invokePublic`) — the same express-permission rule applies to
-   flagging actions/components public. Details: page-reference.md §1.
+   actions (`invokePublic`), read-only records of entities with
+   `public_record_access: ["read"]` (`sdk.data.records.list/get`), and
+   `public_access: ["read"]` file downloads — the same express-permission
+   rule applies to every one of these flags (actions, components, entities,
+   files). Details: page-reference.md §1.
 5. `menus/<slug>.json` — sidebar tree under an app; `items[].type` ∈
    `link|group|entity|page|list`, `reference` = target slug.
    [menu-reference.md](menu-reference.md).

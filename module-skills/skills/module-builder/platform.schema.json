@@ -191,6 +191,7 @@
         "name": { "type": "string" },
         "description": { "type": "string", "minLength": 1 },
         "is_remote": { "type": "boolean" },
+        "public_record_access": { "type": "array", "items": { "enum": ["read", "write", "delete"] }, "description": "Operations ALL records of the entity are publicly exposed for, unauthenticated. Only read is accepted today (world-readable list + get-one + entity definition); write/delete rejected. Empty array = private (default); full-replacement on deploy. Only with the user express permission." },
         "module_slug": { "$ref": "#/$defs/slug" },
         "title_template": { "type": "string", "description": "Liquid, e.g. '{{ first_name }} {{ last_name }}'." },
         "attributes": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/attribute" } }

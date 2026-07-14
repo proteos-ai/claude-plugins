@@ -73,11 +73,22 @@ drift can't ship.
 > (unauthenticated `GET /meta/v1/public/orgs/{orgId}/components/{slug}/bundle`)
 > and is required for any component placed on a `type: "public"` page. Only
 > set it when the user explicitly asked for a public page/component. On a
-> public page the component gets a **restricted sdk**: the only platform call
-> that works is `sdk.functions.actions.invokePublic(orgId, slug, params)`
-> against an `is_public` global action — `data`/`meta`/`storage`/etc. throw.
+> public page the component gets a **restricted sdk** — exactly three
+> unauthenticated reaches:
+> - `sdk.functions.actions.invokePublic(orgId, slug, params)` against an
+>   `is_public` global action (the only path for writes / computed data);
+> - read-only records of `public_record_access: ["read"]` entities via
+>   `sdk.data.records.list/listPage/get` (org bound automatically;
+>   `create`/`update`/`delete`/`batchUpsert` throw) and their definitions via
+>   `sdk.meta.entities.get`/`getWithSchema`;
+> - `public_access: ["read"]` file downloads via `sdk.storage.files.download` /
+>   `publicDownloadUrl(orgId, fileId)`.
+>
+> Everything else (`account`/`agents`/`knowledge`/authed calls) throws.
 > `authToken` is empty there; branch on `useRuntime().isPublic` if a component
-> must serve both worlds. Full-replacement on deploy: omitting the field flips
+> must serve both worlds — the read surface above mirrors the authed method
+> names, so `sdk.data.records.list('leads')` runs unmodified in both.
+> Full-replacement on deploy: omitting the field flips
 > a previously public component back to private (rejected with 409 while a
 > public page still references it).
 

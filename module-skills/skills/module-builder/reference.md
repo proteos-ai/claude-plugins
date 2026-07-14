@@ -84,6 +84,7 @@ File → struct → deploy endpoint:
 | `slug` | string | **required**; singular, kebab-case; org-wide unique; immutable |
 | `name` | string | human label |
 | `is_remote` | bool | `true` → sourced from an external system |
+| `public_record_access` | string[] | operations ALL records are publicly exposed for. Only `["read"]` accepted today → world-READABLE list + get-one + entity definition; `write`/`delete` reserved. Empty `[]` = private (default); full-replacement (omit = resets). ⚠️ express user permission only — see domain-modeling's entity-reference.md |
 | `module_slug` | string | this module's slug |
 | `description` | string | business context (non-negotiable; read by AI agents) |
 | `title_template` | string | Liquid, e.g. `"{{ first_name }} {{ last_name }}"` |

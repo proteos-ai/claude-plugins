@@ -55,6 +55,7 @@ and relations bind to it by its slug.
   "name": "Customer",
   "description": "A company that buys freight-forwarding services from us. Created when sales qualifies an inbound lead; lives through the full account lifecycle (prospect → active → churned). One customer places many orders.",
   "is_remote": false,
+  "public_record_access": [],
   "module_slug": "sales",
   "title_template": "{{ name }}",
   "attributes": [ /* Attribute[] — see §3 */ ]
@@ -67,6 +68,7 @@ and relations bind to it by its slug.
 | `name` | string | Human label, freeform Title Case. |
 | `description` | string | **required**, business context (2–4 sentences). |
 | `is_remote` | boolean | `true` → records are sourced from an external system. Almost always `false`. |
+| `public_record_access` | string[] | Operations ALL records of the entity are exposed for on the unauthenticated public surface. **Today only `["read"]` is accepted** → records become world-READABLE (`GET /data/v1/public/orgs/{orgId}/records/{slug}`, list + get-one) and the entity definition publicly readable; `"write"`/`"delete"` are reserved and rejected until their backends land. Empty `[]` = fully private (default); full-replacement on deploy (omit = resets to private). ⚠️ Only set `["read"]` when the user **explicitly asked** to expose this data publicly (e.g. a public page listing it) — every attribute value on every record ships to anonymous visitors. |
 | `module_slug` | string | The owning module's slug; equals the module you're authoring in. |
 | `title_template` | string | Liquid template rendering a one-line human title for a record — `"{{ first_name }} {{ last_name }}"`, `"{{ number }}"`. Empty = fall back to the record id. **Set this** — it's what relation pickers, related-lists, and breadcrumbs display. |
 | `attributes` | Attribute[] | **required**, non-empty. **Fully replaced** on every deploy — never send a partial list (an omitted attribute is deleted along with its data). |
