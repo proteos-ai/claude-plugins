@@ -23,8 +23,9 @@ standalone types: **kiosk** (`"type": "kiosk"` — chromeless at `/k/…`, still
 authenticated) and **public** (`"type": "public"` — chromeless AND
 unauthenticated at `/p/…`). ⚠️ A public page's layout is world-readable —
 author `"type": "public"` only on the user's explicit request (see
-page-reference.md §1 for the full rules). The `layout` is a typed tree of
-elements.
+page-reference.md §1 for the full rules). A `public`/`kiosk` page can also set
+`layout.style` to control its background and go full-bleed edge-to-edge
+(page-reference.md §2.1). The `layout` is a typed tree of elements.
 
 > **The authoritative wire reference is
 > [page-reference.md](page-reference.md)** — every

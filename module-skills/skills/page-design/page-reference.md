@@ -99,13 +99,51 @@ Platform-page skeleton:
     "width": "320px",
     "is_sticky": true,
     "content": { "type": "column", "id": "side", "gap": "md", "children": [ /* … */ ] }
-  }
+  },
+  "style": { /* public/kiosk only — see §2.1 */ }
 }
 ```
 
 - `version` is always `1`.
 - `main` is one `LayoutElement` — conventionally a `column` with `gap: "md"`.
 - `side_panel` is optional; **omit it unless a tool/widget earns the rail** (§7).
+- `style` is optional and **only honored on `public` + `kiosk` pages** (§2.1).
+
+### 2.1 Page style — background & full-bleed (public / kiosk only)
+
+A `public` or `kiosk` page's shell hard-codes three constants: a `bg`-token
+background, a `1200px` centered content cap, and `24px`/`32px` side/top padding.
+`layout.style` overrides any of them — set a background color, and/or widen the
+content and drop the padding so a component runs **edge-to-edge**.
+
+```json
+"layout": {
+  "version": 1,
+  "main": { "type": "component", "id": "cmp-hero", "component_slug": "landing-hero", "props": {} },
+  "style": {
+    "background": "#0a0a0a",
+    "max_width": "fill",
+    "padding_x": "0px",
+    "padding_y": "0px"
+  }
+}
+```
+
+| key | value | default | notes |
+|---|---|---|---|
+| `background` | design-token key **or** raw CSS color | `bg` token | token keys: `bg` `bg-2` `bg-3` `ink` `ink-2..4` `rule` `rule-2` `accent` `accent-2` `accent-ink` `success` `warning` `danger` `info` → resolve to `var(--color-<key>)`. Raw colors: `#hex`, `rgb()/rgba()`, `hsl()/hsla()`, `oklch()/oklab()`. No `;{}`/`url(` (server rejects). |
+| `max_width` | `"Npx"` · `"N%"` · `"auto"` · `"fill"` | `1200px` | `"fill"`/`"auto"` remove the cap → content spans the full viewport width. |
+| `padding_x` | `"Npx"` · `"N%"` · `"auto"` · `"fill"` | `24px` | horizontal padding of the content container. `"0px"` = flush to the sides. |
+| `padding_y` | same grammar | `32px` | top/bottom padding. |
+
+- **Full-bleed recipe:** `max_width: "fill"` + `padding_x: "0px"` + `padding_y: "0px"`.
+  The component then fills the page; give it its own internal padding.
+- **Fractions are rejected here** (unlike element `width`/`height` §6) — a page
+  container takes `px`/`%`/`auto`/`fill` only.
+- **Type gate:** the metadata-service **rejects** `style` on `record` and
+  `platform` pages (`page_style_unsupported_for_type`). Omit it on those types.
+- `background` paints the whole viewport (`min-h-dvh`); `max_width`/`padding`
+  only reshape the content container inside it.
 
 ---
 
@@ -396,3 +434,4 @@ never embedded in the page. Offline renderer value shapes:
 - [ ] `control` only set when overriding the default; `control_props` dropped when the control changes.
 - [ ] Condition `value`s are strings; `read_only_when` is on fields (mirror onto children for a section).
 - [ ] `side_panel` omitted unless a tool/widget earns it.
+- [ ] `layout.style` only on `public`/`kiosk` pages; `background` is a token key or safe CSS color; `max_width`/`padding_x`/`padding_y` are `px`/`%`/`auto`/`fill` (no fractions). Full-bleed = `max_width:"fill"` + zero padding.

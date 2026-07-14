@@ -425,6 +425,22 @@
         "content": { "type": "string", "minLength": 1 }
       }
     },
+    "pageStyleSize": {
+      "description": "Page-style dimension: 'Npx', 'N%', 'auto', or 'fill'. Stricter than sizeValue — no fractions.",
+      "type": "string",
+      "pattern": "^(\\d+px|\\d+%|auto|fill)$"
+    },
+    "pageStyle": {
+      "description": "Per-page shell presentation. HONORED ONLY on public + kiosk pages (the metadata-service rejects it on record/platform). Every field optional; omitted = the default look (bg background, 1200px cap, 24px/32px padding).",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "background": { "type": "string", "description": "A design-token key ('bg','bg-2','bg-3','ink','accent',…) resolved to var(--color-<key>), OR a raw CSS color (#hex, rgb()/rgba(), hsl()/hsla(), oklch()/oklab()). No ';{}' or 'url(' — server rejects unsafe values." },
+        "max_width": { "$ref": "#/$defs/pageStyleSize" },
+        "padding_x": { "$ref": "#/$defs/pageStyleSize" },
+        "padding_y": { "$ref": "#/$defs/pageStyleSize" }
+      }
+    },
     "pageLayout": {
       "type": "object",
       "additionalProperties": false,
@@ -432,6 +448,7 @@
       "properties": {
         "version": { "const": 1 },
         "main": { "$ref": "#/$defs/layoutElement" },
+        "style": { "$ref": "#/$defs/pageStyle" },
         "side_panel": {
           "type": "object",
           "additionalProperties": false,
@@ -470,7 +487,10 @@
       "allOf": [
         { "if": { "properties": { "type": { "enum": ["platform", "kiosk", "public"] } }, "required": ["type"] },
           "then": { "not": { "required": ["entity_slug"] } },
-          "else": { "required": ["entity_slug"] } }
+          "else": { "required": ["entity_slug"] } },
+        { "if": { "properties": { "layout": { "required": ["style"] } }, "required": ["layout"] },
+          "then": { "properties": { "type": { "enum": ["public", "kiosk"] } }, "required": ["type"],
+            "description": "layout.style is only accepted on public + kiosk pages." } }
       ]
     },
 
