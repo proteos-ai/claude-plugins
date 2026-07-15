@@ -65,17 +65,18 @@ straight through. Keeping `pro` current also keeps scaffolded modules in SDK
 lockstep: `pro module init` pins `go.proteos.ai/functions-sdk-go` to the
 CLI's own build version.
 
-## Bundled MCP servers
+## Bundled MCP server
 
-Installing the plugin also registers the six Proteos platform MCP servers
-([.mcp.json](.mcp.json)): `proteos-knowledge`, `proteos-admin`, `proteos-data`,
-`proteos-agents`, `proteos-workflows`, `proteos-conversations` — so
-module-discovery can ground in the knowledge graph and the builder can inspect
-live org structure without extra setup.
+Installing the plugin also registers the unified Proteos platform MCP server
+([.mcp.json](.mcp.json)): `proteos`, pointing at
+`https://mcp.proteos.ai/v1/all` — every toolset (data, admin, knowledge,
+agents, conversations, workflows) over one connection — so module-discovery
+can ground in the knowledge graph and the builder can inspect live org
+structure without extra setup.
 
 Auth is **OAuth with Dynamic Client Registration** — no token to configure.
 On first use Claude Code runs the browser OAuth flow (re-auth anytime with
-`/mcp`). All six point at production (`https://mcp.proteos.ai`).
+`/mcp`).
 
 ## The skills and how they chain
 

@@ -324,7 +324,7 @@ pro functions hooks logs <slug> --follow   # tail after triggering a write
 pro functions hooks list|get|activate|deactivate <slug>
 ```
 
-Verify by actually writing a record — prefer the `proteos-data` MCP server
+Verify by actually writing a record — prefer the `proteos` MCP server
 (`create_record`/`update_record`, then `get_record` to read the effect back)
 over shelling out — and confirm: before-hooks via the mutation/abort,
 after-hooks via the side effect + logs (remember they're async — give them a

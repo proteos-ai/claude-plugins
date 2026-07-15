@@ -43,7 +43,7 @@ are **page-design**.
    understanding. Keep asking until you can write a one-paragraph description
    of every entity and a one-sentence description of every attribute and enum
    value **without making anything up**.
-2. **Read what already exists.** Prefer the `proteos-admin` MCP server —
+2. **Read what already exists.** Prefer the `proteos` MCP server —
    `list_entities`, then `get_entity` on anything you'll extend (fallback:
    `pro meta entities list -o json`). Avoid org-wide slug collisions and
    reuse the conventions in place (relation predicate style, enum casing,
@@ -239,5 +239,5 @@ No platform attributes. Every added attribute: snake_case `name`, substantive
   and redeploy; no ceremony.
 - The whole module lifecycle → **module-builder**.
 - Pages/lists over the entities → **page-design**.
-- Reading/writing records → the `proteos-data` MCP server (CLI `pro data`
+- Reading/writing records → the `proteos` MCP server (CLI `pro data`
   as fallback), not modeling.

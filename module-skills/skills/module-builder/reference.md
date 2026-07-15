@@ -530,7 +530,7 @@ pro module add variable --key STRIPE_SECRET_KEY --secret               # key onl
 > server-side (e.g. behind an action that makes the call). Also:
 > **re-deploying a non-secret variable with an empty `value` blanks the stored
 > value** — never deploy a placeholder-empty `value` over a populated one;
-> unchanged values are skipped. Verify with `proteos-admin` `list_variables` (or `pro meta variables list`).
+> unchanged values are skipped. Verify with `proteos` `list_variables` (or `pro meta variables list`).
 
 ---
 

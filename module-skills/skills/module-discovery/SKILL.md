@@ -44,7 +44,7 @@ Two situations, handle both gracefully:
 
 - **A Proteos knowledge MCP server is connected** (tools like `search_nodes`,
   `get_node_meta`, `read_node_content`, `get_neighbors`, `create_node`,
-  `link_nodes` — typically named `proteos-knowledge*`): the org's knowledge
+  `link_nodes` — typically named `proteos*`): the org's knowledge
   graph is your durable memory. Use Step 1 (research first) and Step 4a
   (capture to the graph).
 - **No knowledge MCP**: skip graph research; interview from scratch and capture
@@ -52,7 +52,7 @@ Two situations, handle both gracefully:
   (Step 4b) so the design phase and future sessions inherit it.
 
 Also check the org's live structure regardless — existing entities carry
-conventions and collision risks. Prefer the `proteos-admin` MCP server
+conventions and collision risks. Prefer the `proteos` MCP server
 (`list_entities`, `list_apps` — structured, no output parsing); fall back to
 the CLI only when it isn't connected:
 

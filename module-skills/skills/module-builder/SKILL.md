@@ -123,16 +123,16 @@ Two surfaces, clear split:
   `check`), previewing (`serve`), shipping (`deploy`, `activate`), syncing
   (`pull`, `clone`), and function logs. These operate on the local module
   directory — the CLI is the only tool for them.
-- **MCP servers = the live platform.** Knowledge graph (`proteos-knowledge`),
-  reading/creating/editing **records** (`proteos-data`), and inspecting org
-  structure — existing entities, apps, pages, schemas (`proteos-admin`).
-  Prefer these over `pro meta …`/`pro data …` shell calls: structured tool
+- **The `proteos` MCP server = the live platform.** One connection carrying
+  every toolset: the knowledge graph, reading/creating/editing **records**,
+  and inspecting org structure — existing entities, apps, pages, schemas.
+  Prefer it over `pro meta …`/`pro data …` shell calls: structured tool
   calls are faster, typed, and need no output parsing. Fall back to the CLI
-  equivalents only when the MCP servers aren't connected.
+  equivalents only when the MCP server isn't connected.
 
 Rule of thumb: **files on disk → CLI; anything live in the platform → MCP.**
 One-off structure mutations outside a module (rare) can go through either
-`proteos-admin` upserts or `pro meta … apply` — but module content always
+`proteos` MCP upserts or `pro meta … apply` — but module content always
 ships via `pro module deploy`, never ad-hoc.
 
 ## The workflow
@@ -217,7 +217,7 @@ when a knowledge MCP is connected, get the playback + entity shortlist
 preference** (data-first vs visual-first). Also inspect the org — slugs are
 **org-wide unique** and conventions should match:
 
-- Preferred: `proteos-admin` MCP — `list_entities`, `list_apps` (+ `get_entity`
+- Preferred: `proteos` MCP — `list_entities`, `list_apps` (+ `get_entity`
   for anything you'll extend).
 - Fallback (no MCP): `pro meta entities list -o json`, `pro meta apps list -o json`.
 
@@ -487,15 +487,15 @@ activated") — ignore it.
 Schema-valid ≠ correct. After deploy (MCP-first — CLI in parentheses as the
 no-MCP fallback):
 
-- Attributes landed: `proteos-admin` `get_entity` (`pro meta entities get
+- Attributes landed: `proteos` `get_entity` (`pro meta entities get
   <slug> -o json`).
 - Open the app in the web client: menu shows, list loads, record page renders.
-- Fire the hooks: create/update a record via `proteos-data` `create_record` /
+- Fire the hooks: create/update a record via `proteos` `create_record` /
   `update_record` — faster and typed vs shelling out; read it back with
   `get_record`/`list_records` to confirm mutations stuck. Press the page
   action button. Tail `pro functions hooks logs <slug> --follow` /
   `pro functions actions logs <slug>` (logs are CLI-only).
-- Variables intact: `proteos-admin` `list_variables` (`pro meta variables
+- Variables intact: `proteos` `list_variables` (`pro meta variables
   list`) — no value got blanked.
 
 Don't claim success without exercising the deployed behavior.
@@ -520,7 +520,7 @@ out-of-band after deploy), and deploy never overwrites the stored value
 reach a client does NOT belong in a module variable — keep it server-side
 (e.g. behind an action). Re-deploying an EMPTY non-secret `value` over a
 populated one blanks it (unchanged values are skipped) — verify with
-`proteos-admin` `list_variables` (or `pro meta variables list`).
+`proteos` `list_variables` (or `pro meta variables list`).
 
 ## Updating an existing module
 
@@ -570,9 +570,9 @@ pro functions hooks|actions list|get|activate|deactivate|logs <slug> [--follow]
 
 ## What this skill does NOT do
 
-- **Records/data** (creating customers, orders): that's the `proteos-data`
-  MCP server (CLI `pro data` as fallback) — out of scope; the module builds
-  structure, not rows.
+- **Records/data** (creating customers, orders): that's the `proteos` MCP
+  server's data tools (CLI `pro data` as fallback) — out of scope; the module
+  builds structure, not rows.
 - **Users, orgs, assigning users to roles**: platform administration. A module
   DOES ship role definitions + entity grants (`roles.json`,
   `permissions.json`) — creating users and putting them IN roles is not module
