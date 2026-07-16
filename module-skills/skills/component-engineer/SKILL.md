@@ -244,7 +244,7 @@ value in `variables.json`) and deploy-overwrite behavior. Consequences:
   use `useFillViewportHeight()` (returns a pinned height or `null`), then
   `flex: 1; min-height: 0; overflow-y: auto` on scrollable columns.
 - **Design tokens** ship in the iframe — style with
-  `var(--color-bg-2)`, `var(--color-ink-3)`, `var(--radius-lg)`,
+  `var(--color-surface-2)`, `var(--color-ink-3)`, `var(--radius-lg)`,
   `var(--shadow-rest)`, `var(--font-mono)` etc., or use `@proteos/ui`
   primitives (`Button`, `Badge`, `Avatar`, `Select`, `EmptyState`,
   `Skeleton`) for a native look.
