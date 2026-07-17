@@ -9,7 +9,7 @@
   "plugins": [
     {
       "name": "module-skills",
-      "version": "0.26.2",
+      "version": "0.26.3",
       "description": "Build complete Proteos modules interactively: discovery → entities + permissions → pages/lists/menus → live preview (pro module serve) → hooks/actions/components → deploy.",
       "source": "./module-skills",
       "category": "development",
