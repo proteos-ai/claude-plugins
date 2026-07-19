@@ -393,7 +393,8 @@
         "type": { "const": "related_list" },
         "related_entity_slug": { "$ref": "#/$defs/slug" },
         "via_attribute": { "$ref": "#/$defs/attributeName" },
-        "list_slug": { "$ref": "#/$defs/slug" }
+        "list_slug": { "$ref": "#/$defs/slug" },
+        "follows_parent_edit_mode": { "type": "boolean" }
       }
     },
     "componentElement": {
