@@ -186,6 +186,10 @@ created, err := fn.CreateRecord[domain.Document](ctx, "document", doc)
 updated, err := fn.UpdateRecord[domain.Document](ctx, "document", id, doc)
 many, err := fn.ListRecords[domain.Document](ctx, "document", &sdkdata.ListRecordsOptions{...}) // page/sort/bracket filters; returns Many[T]{Meta, Data}
 err = fn.DeleteRecord(ctx, "document", id)   // also fn.Records.Delete
+resp, err := fn.BatchUpsertRecords(ctx, "document", docs) // batch upsert ([]T); also fn.Records.BatchUpsert for explicit transactions
+// Upsert is id-presence based (id exists -> partial-merge update, else create).
+// NOT atomic: check resp.Results[i].Status per row (transaction_id = input index).
+// No server-side size cap — keep batches modest (~100).
 
 // SQL read model
 rows, meta, err := fn.QueryRecords[domain.Document](ctx, `SELECT * FROM document WHERE is_signed = true`)
