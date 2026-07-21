@@ -7,8 +7,10 @@ description: >
   page props reach the component as Liquid-resolved SNAPSHOTS (bind scalar
   leaves — objects stringify), the injected authenticated sdk (account,
   agents, data, functions, knowledge, meta, storage), module variables (real
-  values — never client-unsafe secrets), props-schema validation, styling via
-  design tokens (no CSS imports), auto-resize, navigation + peek, and the
+  values — never client-unsafe secrets), props-schema validation, building the
+  UI from @proteos/ui primitives (always — provided external, styled by the
+  runtime) with design tokens (no CSS imports), auto-resize, navigation +
+  peek, and the
   preview loop: `pro module serve` (whole module) and `pro components preview`
   (isolation). Use when filling in a components/<slug>/index.tsx. Triggers —
   "component-engineer", "write a component", "custom component", "React
@@ -61,7 +63,7 @@ script header, and the module-builder skill's step 0.
 
 ```sh
 pro components add <slug>        # from anywhere inside the module tree
-pnpm install                     # at the pnpm-workspace root — links @proteos/* deps; build never installs
+pnpm install                     # in components/<slug>/ — pulls the pinned @proteos/* packages (types); build never installs
 pro components validate <slug>   # esbuild dry-run: does it bundle?
 ```
 
@@ -163,8 +165,43 @@ PROVIDED: react, react-dom, @tanstack/react-query, @proteos/ui, @proteos/sdk, @p
 BUNDLED:  everything else in the component's package.json (leaflet, d3, chart.js, pragmatic-drag-and-drop, …)
 ```
 
-Add a dep to the component's `package.json` → root `pnpm install` → import
-normally. Browser-only (no Node APIs).
+Add a dep to the component's `package.json` → `pnpm install` in the
+component directory → import normally. Browser-only (no Node APIs).
+
+## Build the UI from `@proteos/ui` — always
+
+`@proteos/ui` is the Proteos design system, and it is a **provided external**:
+the host serves ONE shared copy via the import map, its stylesheet is already
+loaded in the runtime iframe, and it costs your bundle zero bytes. **Default
+to it for every standard UI element** — reach for hand-rolled HTML controls or
+a third-party UI kit only when no primitive fits (and never re-implement a
+button/input/select/table by hand).
+
+```tsx
+import { Button, Card, CardContent, EmptyState, Input, Select, Skeleton } from '@proteos/ui'
+```
+
+What's there (all top-level named exports):
+
+- **Actions & chrome**: `Button`, `Menu`, `Command` (+ `useCommand`,
+  `useEscapeKey`, `Kbd`), `Breadcrumbs`, `Tabs`, `SegmentedControl`,
+  `Tooltip`, `Popover`, `Modal`, `Separator`, `Card` (+ slots), `Nav*`
+- **Forms**: `Input`, `Textarea`, `Select`, `Combobox`, `Checkbox`,
+  `RadioGroup`, `Switch`, `MultiSelect`, `BadgeMultiSelect`, `TagInput`,
+  `DatePicker`, `DateTimePicker`, `TimeField`, `CurrencyInput`, `FileField`
+  (+ the shared `Field*` chrome so custom controls match)
+- **Data display**: `Table*`, `DataTable`, `Badge`, `Avatar`, `AvatarGroup`,
+  `AttributeTypeIcon`, `ProgressBar`, `RecordFilter*`
+- **States & media**: `EmptyState`, `Skeleton`, `SuccessAnimation`,
+  `ErrorAnimation`, `AttachmentChip`, `ImageAttachment`, `ImageLightbox`,
+  `FileViewer`
+- **Utility**: `cn` (class merge)
+
+Why always: primitives carry the token theme (light/dark for free), React
+Aria keyboard/focus/ARIA behavior, and the exact look of the surrounding
+product — a hand-rolled `<button>` sticks out immediately and duplicates work
+the import map already paid for. Compose primitives + tokens; drop to raw
+elements only for layout scaffolding (`div` + flex/grid with token vars).
 
 **CSS imports do NOT work** — `import 'leaflet/dist/leaflet.css'` fails the
 build (single-file ESM output, esbuild can't emit a css file). Style with:
@@ -243,11 +280,25 @@ value in `variables.json`) and deploy-overwrite behavior. Consequences:
 - **Full-viewport boards**: `100vh` is circular inside an auto-sized iframe —
   use `useFillViewportHeight()` (returns a pinned height or `null`), then
   `flex: 1; min-height: 0; overflow-y: auto` on scrollable columns.
-- **Design tokens** ship in the iframe — style with
-  `var(--color-surface-2)`, `var(--color-ink-3)`, `var(--radius-lg)`,
-  `var(--shadow-rest)`, `var(--font-mono)` etc., or use `@proteos/ui`
-  primitives (`Button`, `Badge`, `Avatar`, `Select`, `EmptyState`,
-  `Skeleton`) for a native look.
+- **`@proteos/ui` first** (see the section above) — primitives for every
+  control; **design tokens** for the layout scaffolding around them.
+- **Design tokens are MANDATORY — never hard-code a color, radius, shadow,
+  or font.** No hex/rgb/hsl literals, no `border-radius: 8px`, no
+  `font-family: monospace`. Hard-coded values break instantly in dark mode
+  (tokens flip per theme; literals don't) and drift off-brand. The full token
+  set ships in the iframe stylesheet — always `var(...)`:
+  - **Surfaces**: `--color-bg`/`-2`/`-3`, `--color-surface`/`-2`/`-3`
+  - **Text (ink scale)**: `--color-ink` (strongest) → `--color-ink-2/-3/-4`
+    (progressively muted); on-accent text: `--color-accent-ink`
+  - **Borders**: `--color-rule`, `--color-rule-2`, `--color-rule-strong`
+  - **Semantic**: `--color-accent`/`-2`, `--color-success`,
+    `--color-warning`, `--color-danger`, `--color-info`
+  - **Radii**: `--radius-sm/md/lg/xl/pill` · **Shadows**: `--shadow-rest`,
+    `--shadow-raised`, `--shadow-float`, `--shadow-inset`, `--shadow-focus`,
+    `--shadow-focus-danger` · **Type**: `--font-sans`, `--font-mono` ·
+    **Motion**: `--duration-fast/base/slow`, `--ease-out-soft`
+  - Tinted variants: derive, don't invent —
+    `color-mix(in oklab, var(--color-danger) 8%, var(--color-surface))`
 - `fetch()` to external APIs works (no CSP in the runtime iframe); prefer the
   SDK for Proteos calls.
 - Errors: the runtime ErrorBoundary renders an in-frame alert + posts
@@ -348,9 +399,11 @@ Two files drive a convincing preview (neither ever deploys):
 | Symptom | Cause | Fix |
 |---|---|---|
 | `has no default-exported React component` | named export only | `export default function …` |
-| Bare import fails to bundle | dep not installed | add to component package.json + root `pnpm install` |
+| Bare import fails to bundle | dep not installed | add to component package.json + `pnpm install` in components/<slug>/ |
 | Two-React / hook errors | bundled your own react / broke externals | import provided packages normally |
 | `Cannot import "….css"` build error | CSS import | inline styles / `<style>` / @proteos/ui |
+| UI looks off-brand / unstyled controls | hand-rolled HTML controls | use `@proteos/ui` primitives (provided, pre-styled) |
+| Colors wrong in dark mode | hard-coded hex/rgb literals | token `var(--color-…)` only; tint via `color-mix` |
 | Prop is `[object Object]` | Liquid-bound a whole object | bind scalar leaves per prop |
 | "should be number, got string" warning | Liquid stringifies | declare string + coerce |
 | Component shows stale data | props/record are snapshots; DATA_INVALIDATE never sent | fetch via sdk + refetch |
