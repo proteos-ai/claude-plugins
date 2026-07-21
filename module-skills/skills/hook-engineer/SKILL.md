@@ -144,6 +144,11 @@ types imported from `<module-path>/gen/domain` (they exist only after
 
 - Entity slug → PascalCase struct (`company` → `domain.Company`); snake_case
   attribute → PascalCase field (`is_signed` → `IsSigned`).
+- The five platform attributes — `id`, `created_at`, `updated_at`,
+  `created_by`, `updated_by` — are emitted automatically on every generated
+  struct (never declare them in entity JSON). All five are optional, so they
+  are always pointers: `Id *string`, `CreatedAt *time.Time`,
+  `CreatedBy *<Entity>CreatedBy` — nil-check before deref.
 - **Pointer rule: `is_required && !is_nullable` → bare value; anything else →
   pointer.** A `default_value` does NOT make a field non-pointer; a
   required-but-nullable field is still a pointer. Always nil-check before
@@ -233,6 +238,34 @@ query for a conflicting row, `UserError` on hit.
 into another entity, notify — in `after_create`/`after_update`, diffed on the
 transition, idempotent (retries happen). The user's write already committed;
 your latency doesn't block them.
+
+**Batch writes (`fn.BatchUpsertRecords`).** For mirroring/seeding many rows
+of ANOTHER entity in one call instead of N `CreateRecord` round-trips
+(typical in `after_*` sync hooks and in actions). Contract:
+
+```go
+items := make([]domain.LineItem, 0, len(rows))
+for _, r := range rows { items = append(items, mapRow(r)) }
+resp, err := fn.BatchUpsertRecords(ctx, "line-item", items)
+if err != nil { return err }                    // transport/auth failure only — row outcomes live in resp.Results
+for _, res := range resp.Results {              // transaction_id == input index ("0","1",…)
+    if res.Status != sdkdata.BatchTransactionSuccess {
+        fn.Log.Warn(ctx, "line-item upsert failed", map[string]any{
+            "index": res.TransactionID, "code": res.Error.Code, "message": res.Error.Message,
+        })
+    }
+}
+```
+
+- Per row: `data` with an `id` that exists → **partial-merge update** (only
+  supplied attributes written); no `id` / unknown `id` → create.
+- **Non-atomic**: rows succeed/fail independently — always walk
+  `resp.Results`; a top-level `err` only covers transport/auth, not row
+  outcomes. Re-running a batch whose rows had no `id` creates duplicates —
+  include ids (or dedup in a `before_create` hook) when retries are possible.
+- No server-side size cap — chunk ~100 per call.
+- `fn.Records.BatchUpsert(ctx, entity, txns)` is the untyped variant when you
+  need to mix shapes or choose your own `transaction_id`s.
 
 **Bridge/join rows — no DB cascade.** Relations are metadata only:
 `on_delete` creates no FK and nothing propagates. Clean up dependent rows in

@@ -141,7 +141,6 @@ import (
 
 	_ "go.proteos.ai/functions-sdk-go/runtime/autoexport"
 	"go.proteos.ai/functions-sdk-go/fn"
-	"go.proteos.ai/functions-sdk-go/fn"
 
 	"go.proteos.ai/modules/my-domain/gen/actions"
 	"go.proteos.ai/modules/my-domain/gen/domain"
@@ -261,6 +260,24 @@ passthrough.
   is omitted.
 - **Cross-record orchestration (global)** — iterate
   `fn.ListRecords`/`QueryRecords`, apply, accumulate counts into `Result`.
+- **Bulk create / seed (global)** — build the rows, write them in ONE call
+  with `fn.BatchUpsertRecords` instead of N `fn.CreateRecord` round-trips,
+  then report per-row outcomes:
+
+  ```go
+  resp, err := fn.BatchUpsertRecords(ctx, "activity", activities)
+  if err != nil { return result, err }
+  created, failed := 0, 0
+  for _, r := range resp.Results {          // transaction_id = input index
+      if r.Status == sdkdata.BatchTransactionSuccess { created++ } else { failed++ }
+  }
+  result.Created, result.Failed = created, failed
+  ```
+
+  Semantics: per-row upsert is id-presence based (existing `id` → partial-merge
+  update, else create); the batch is **non-atomic** — rows fail independently
+  and the action must surface partial success in its `Result` (a top-level
+  `err` is transport/auth only). No server-side size cap — chunk ~100.
 - **External system call** — `fn.Secrets.Read` the token,
   `fn.HTTP.PostJSON`, persist with `fn.UpdateRecord`.
 - **Webhook receiver (public global)** — verify `ctx.Header`, parse params,

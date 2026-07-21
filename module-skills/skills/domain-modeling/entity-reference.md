@@ -284,7 +284,6 @@ with a relation back to the header; the page shows the lines as a `related_list`
 
 - [ ] Validates against `#/$defs/createEntityRequest`.
 - [ ] `slug` kebab-case, singular; `attributes` is the FULL list.
-- [ ] Declares `id`, `created_at`, `updated_at`.
 - [ ] Every attribute name snake_case; booleans prefixed `is_`/`has_`/`can_`.
 - [ ] Every enum `value` kebab-case (or a canonical external code); every enum value has a `description`.
 - [ ] `datetime` has `meta.format`; `enum`/`array`/`object`/`relation` have their required `meta`.
