@@ -200,8 +200,11 @@ download URLs, connections, log). Action-specific:
 - An action writing the record it operates on is **normal** — it re-triggers
   that record's hooks, usually desired.
 - **Timeout: 1 minute** per invocation.
-- Relations have no cascade; new entities the action writes need
-  `permissions.json` grants; `time.Now()` works.
+- A record delete an action triggers applies the relation `on_delete` policies
+  (cascade / restrict / set-null) — a `restrict` blocker surfaces as a 409, so
+  handle it and report it with `fn.UserError`.
+- New entities the action writes need `permissions.json` grants; `time.Now()`
+  works.
 
 ## User-facing failures
 

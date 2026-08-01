@@ -49,6 +49,7 @@ page: which columns, in what order, sorted and filtered how.
 | `columns` | Column[] | `{ attribute, label, width }`. `attribute` = snake_case entity attribute name; `width` in px (a hint). |
 | `sorting` | SortConfig[] | `{ attribute, direction }`, `direction` ∈ `asc` `desc`. Empty = default order. |
 | `filters` | FilterGroup[] | rows that don't match are excluded (§3). Empty = all rows. |
+| `default_page_slug` | string | optional. Record page opened when a row is clicked from this list. Must be a `record` page over the same `entity_slug` (deploy rejects otherwise). Empty/omitted = the org's default page for the entity. Lets two lists over the same entity open different layouts (e.g. a "sales pipeline" list opening a sales-focused page). |
 
 ### Column
 
@@ -152,3 +153,4 @@ Used by list/list-view `filters` **and** by page `visible_when` /
 - [ ] ≤ 6–7 columns; title first, system fields last or omitted.
 - [ ] Filter `value`s are strings; enum comparisons use kebab-case values.
 - [ ] A default `sorting` is set to something meaningful.
+- [ ] `default_page_slug` (if set) references a `record` page over the list's entity.

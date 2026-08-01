@@ -31,7 +31,7 @@
         "related_entity_slug": "customer",
         "related_attribute": "id",
         "predicate": "is placed by",
-        "description": "Each order is placed by exactly one customer; a customer places many orders. No DB cascade — an order-cleanup on customer delete must be handled in a before_delete hook.",
+        "description": "Each order is placed by exactly one customer; a customer places many orders. on_delete is restrict: a customer with orders cannot be deleted until they are repointed or removed — orders are financial history, never silently dropped.",
         "on_delete": "restrict"
       }
     },

@@ -66,6 +66,14 @@ into `object` attributes (`shipping_address.postal_code`), leaf-only.
 - **`related_list`** — embedded live table of related records:
   `related_entity_slug` + `via_attribute` (the relation attr ON THE RELATED
   entity pointing back) + optional `list_slug` pin.
+- **`related_record`** — one related record rendered inline with a record
+  page: same `related_entity_slug` + `via_attribute` addressing as
+  `related_list`, plus optional `page_slug` pin and
+  `follows_parent_edit_mode`. First match only (oldest first), hover-pencil
+  editing that saves the related record itself, no chrome of its own — wrap
+  in a `section` for a title. Use for true one-to-one facets; many records →
+  `related_list`. `page_slug` is unvalidated (falls back to the entity's
+  default record page) and pages nest at most 3 deep.
 - **`component`** — custom React block: `component_slug` + `props` (Liquid
   templates against `{record, entity, params}` — **bind scalar leaves**;
   passing a whole object stringifies to `[object Object]`). →

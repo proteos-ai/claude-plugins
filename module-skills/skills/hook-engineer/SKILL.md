@@ -8,8 +8,9 @@ description: >
   events (side effects, sync, external calls — at-least-once, so idempotent).
   Covers the six event signatures, the generated domain.<Entity> types
   (pointer rules, typed enums), the host capabilities (records, query, http,
-  cache, secrets, storage, connections, log), no-DB-cascade cleanup in
-  before_delete, and loop-safe cross-entity sync via a one-shot cache mark.
+  cache, secrets, storage, connections, log), how an enforced relation
+  on_delete cascade fires before_delete on every cascaded row, and loop-safe
+  cross-entity sync via a one-shot cache mark.
   Use when filling in a hooks/<slug>/main.go inside a module. Triggers —
   "hook-engineer", "write a hook", "before_create hook", "after_update hook",
   "lifecycle hook", "validate on save", "denormalize", "sync entities",
@@ -267,10 +268,24 @@ for _, res := range resp.Results {              // transaction_id == input index
 - `fn.Records.BatchUpsert(ctx, entity, txns)` is the untyped variant when you
   need to mix shapes or choose your own `transaction_id`s.
 
-**Bridge/join rows — no DB cascade.** Relations are metadata only:
-`on_delete` creates no FK and nothing propagates. Clean up dependent rows in
-**`before_delete`** (synchronous — the delete aborts if cleanup fails, so
-nothing orphans). NotFound on cleanup is fine — the goal state is "gone":
+**Bridge/join rows — the relation's `on_delete` does the cascade.** It IS
+enforced: data-service resolves the whole inbound-relation graph on delete and
+applies `cascade` (delete the referencing rows, transitively) / `set-null` (null
+the reference) / `restrict` (block with 409 `relation_restrict`) in ONE
+transaction. Model the cleanup in the schema first.
+
+Two consequences for your hooks:
+
+- Your `before_delete` fires for **every** cascaded row, not just the one the
+  user deleted — pre-commit and fail-closed, so an error there aborts the whole
+  cascade with nothing written.
+- A `set-null` row fires **`before_update`** (not delete). Mutations you make to
+  it are NOT persisted — the cascade writes a pure null; the hook is notified and
+  may abort.
+
+Reach for hand-rolled cleanup in `before_delete` only for what a relation policy
+can't express — external systems, storage files, non-relation bookkeeping.
+NotFound on cleanup is fine — the goal state is "gone":
 
 ```go
 if err := fn.DeleteRecord(ctx, "task", bridge.TaskId); err != nil && !errors.Is(err, fn.ErrNotFound) {
@@ -327,7 +342,8 @@ the chain provably terminate. Keep the mapping+diff logic in a pure
 
 - **All six events dispatch** — before sync pre-commit, after async
   post-commit at-least-once (idempotency required).
-- **Relations: no FK, no cascade** — clean up in `before_delete`.
+- **Relations: `on_delete` is enforced** — cascade/restrict/set-null applied
+  atomically; your `before_delete` runs for every cascaded row.
 - **Timeout: 30s per hook** (actions get 1m).
 - **`time.Now()`/`time.Sleep` work** (real runtime clock). Historical note:
   records stamped `2022-01-01` predate the clock fix — not your bug.
@@ -345,7 +361,7 @@ the chain provably terminate. Keep the mapping+diff logic in a pure
 | After-hook error "lost" | async — errors retry/DLQ, never surface to the user | log richly; design for retry |
 | Sync hooks ping-pong | writer cleared its own mark / diff missing | one-shot CONSUMED mark + diff (writer never clears) |
 | Duplicate rows despite `is_unique` | records aren't uniqueness-enforced | enforce in a `before_*` hook |
-| Bridge row dangling after delete | trusted `on_delete: cascade` | delete dependents in `before_delete` |
+| Delete rejected with 409 `relation_restrict` | an inbound relation is `on_delete: restrict` | clear/repoint the children, or model that relation as `cascade`/`set-null` |
 | User sees a generic 500 | plain `error` from a before-hook | `fn.UserError`/`UserErrorf` |
 | Expensive check on every save | didn't diff `record` vs `current`/`previous` | gate on the transition |
 | Wasm export missing | removed `autoexport` import or `main()` | restore both |

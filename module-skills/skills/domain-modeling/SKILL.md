@@ -8,8 +8,9 @@ description: >
   the data. Covers all 13 attribute types (incl. user, currency,
   knowledge-text, file), relation cardinality, the server-managed platform
   attributes, naming conventions, and the platform invariants (slug-is-PK,
-  full-replacement attribute updates, no DB cascade). Use when designing a new
-  domain, refactoring a schema, or deciding "is this one entity or three?".
+  full-replacement attribute updates, enforced relation on_delete). Use when
+  designing a new domain, refactoring a schema, or deciding "is this one entity
+  or three?".
   Triggers — "model my domain", "design entities", "what entities should I
   have", "value object vs entity", "aggregate root", "schema design", "data
   model", "entity relationships", "how should I model X".
@@ -138,10 +139,20 @@ Recurring shapes:
   attributes like `assigned_at`).
 - `related_attribute` must be `id` or an `is_unique: true` attribute.
 - `predicate` reads host → target ("order *is placed by* customer").
-- **`on_delete` is advisory only — there is NO database foreign key and NO
-  cascade.** If deleting the target must clean up the host rows, a
-  `before_delete` hook does it (→ hook-engineer). `set-null` is incompatible
-  with `is_required: true`.
+- **`on_delete` is enforced** — data-service applies it on every record delete,
+  so choose it per relation:
+  - `restrict` — the delete is blocked while referencing rows exist (409
+    `relation_restrict`, listing the blocking `entity.attribute`). Also the
+    fallback for an absent/unknown value.
+  - `cascade` — referencing rows are deleted too, walked transitively.
+  - `set-null` — the referencing attribute is nulled (those rows are not walked
+    further). Incompatible with `is_required: true`.
+
+  The whole plan commits in ONE transaction, capped at 10 000 records (400
+  `cascade_too_large` above it). Cascaded rows fire their own `before_delete`
+  hooks and `record.deleted` events; set-null rows fire `before_update` /
+  `record.updated`. There is still no Postgres FK — enforcement is
+  application-level over the inbound-relation graph, so direct SQL bypasses it.
 - You cannot delete an entity that is the target of another entity's relation
   — repoint/remove inbound relations first.
 
@@ -196,7 +207,9 @@ elsewhere, queried independently, or unbounded in cardinality.
 - **Reusing `id` for an external identifier** → `external_id`, unique.
 - **Declaring `id`/`created_at`/`created_by`/…** → platform-managed; the
   server drops your copy anyway.
-- **Assuming `on_delete: cascade` cleans up** → it doesn't; write the hook.
+- **Picking `on_delete` by reflex** → it really fires. `cascade` on a shared
+  lookup deletes live data; `restrict` on owned children makes the parent
+  undeletable. Decide per relation.
 - **Non-snake_case attribute names** → `customer_id`, `is_signed`; no
   exceptions.
 - **`public_record_access: ["read"]` as a convenience** → it makes EVERY record of

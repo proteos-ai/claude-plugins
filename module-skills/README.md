@@ -110,7 +110,8 @@ pro module build  →  pro module deploy → pro meta modules activate → verif
 - Every new entity ships `permissions.json` grants (or everything 403s).
 - Substantive descriptions on every entity/attribute/enum value — the schema
   is read by AI agents.
-- Relations have no DB cascade — cleanup is a `before_delete` hook.
+- Relations enforce `on_delete` (cascade / restrict / set-null) on record
+  delete, transactionally — pick it deliberately; `restrict` is not a no-op.
 - `before_*` hooks are synchronous (validate/mutate/abort); `after_*` are
   async post-commit at-least-once (side effects, idempotent).
 - Preview before deploy: the user approves what they see at the

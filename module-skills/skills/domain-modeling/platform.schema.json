@@ -170,7 +170,7 @@
         "related_attribute": { "$ref": "#/$defs/attributeName" },
         "predicate": { "type": "string", "description": "host -> target phrase, e.g. 'is placed by'." },
         "description": { "type": "string" },
-        "on_delete": { "type": "string", "enum": ["cascade","restrict","set-null"], "description": "Advisory only — NO DB cascade. Propagate deletes in a before_delete hook." }
+        "on_delete": { "type": "string", "enum": ["cascade","restrict","set-null"], "description": "Enforced on record delete: restrict blocks with 409 relation_restrict, cascade deletes referencing rows transitively, set-null nulls the reference. Applied in one transaction." }
       }
     },
     "currencyMeta": {
@@ -228,7 +228,8 @@
         "name": { "type": "string" },
         "columns": { "type": "array", "items": { "$ref": "#/$defs/column" } },
         "sorting": { "type": "array", "items": { "$ref": "#/$defs/sortConfig" } },
-        "filters": { "type": "array", "items": { "$ref": "#/$defs/filterGroup" } }
+        "filters": { "type": "array", "items": { "$ref": "#/$defs/filterGroup" } },
+        "default_page_slug": { "$ref": "#/$defs/slug", "description": "Optional. Record page opened when a row is clicked from this list; must be a record page over the same entity_slug. Omitted = the org's default page for the entity." }
       }
     },
     "createListViewRequest": {
@@ -291,6 +292,7 @@
         { "$ref": "#/$defs/tabsElement" },
         { "$ref": "#/$defs/fieldElement" },
         { "$ref": "#/$defs/relatedListElement" },
+        { "$ref": "#/$defs/relatedRecordElement" },
         { "$ref": "#/$defs/componentElement" },
         { "$ref": "#/$defs/dividerElement" },
         { "$ref": "#/$defs/textElement" }
@@ -394,6 +396,19 @@
         "related_entity_slug": { "$ref": "#/$defs/slug" },
         "via_attribute": { "$ref": "#/$defs/attributeName" },
         "list_slug": { "$ref": "#/$defs/slug" },
+        "follows_parent_edit_mode": { "type": "boolean" }
+      }
+    },
+    "relatedRecordElement": {
+      "type": "object",
+      "unevaluatedProperties": false,
+      "description": "Renders the FIRST record of related_entity_slug that references this record through via_attribute, laid out with a record page. page_slug optionally pins that page; when omitted or dangling the related entity's default record page is used. Carries no chrome of its own \u2014 wrap it in a section element for a title. A hover pencil edits the related record in place; follows_parent_edit_mode (default true) also opens it whenever the host page enters edit mode, but Save always PATCHes the related record on its own.",
+      "required": ["type", "related_entity_slug", "via_attribute"],
+      "properties": {
+        "type": { "const": "related_record" },
+        "related_entity_slug": { "$ref": "#/$defs/slug" },
+        "via_attribute": { "$ref": "#/$defs/attributeName" },
+        "page_slug": { "$ref": "#/$defs/slug" },
         "follows_parent_edit_mode": { "type": "boolean" }
       }
     },

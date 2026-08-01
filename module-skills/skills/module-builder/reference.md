@@ -216,12 +216,16 @@ holds `{ "id": "<file-id>", "name": "<filename>" }`)
 target. FK attribute name convention: `<related_slug>_id` (`customer_id`).
 Many-to-many → an explicit join entity.
 
-> ⚠️ **`on_delete` is advisory metadata — there is NO database foreign key and
-> NO automatic cascade.** Deleting the referenced record does not delete, null,
-> or restrict the referrer at the DB level. If a delete should propagate
-> (remove a child, clear a bridge row), a `before_delete` **hook** must do it
-> explicitly (see hook-engineer). Treat `on_delete` as documentation of intent,
-> not an enforced constraint.
+> ✅ **`on_delete` is enforced.** data-service applies the policy on every
+> record delete, atomically: `restrict` blocks the delete with 409
+> `relation_restrict` while referencing rows exist (also the fallback for an
+> absent/unknown value), `cascade` deletes the referencing rows (walked
+> transitively), `set-null` nulls the referencing attribute. Cascaded rows fire
+> their own `before_delete` hooks and `record.deleted` events; set-null rows
+> fire `before_update` / `record.updated`. The plan is capped at 10 000 records
+> (400 `cascade_too_large`). Choose the policy deliberately per relation —
+> `restrict` is the safe pick, not a no-op. There is still no Postgres FK: the
+> guarantee is application-level, so direct SQL bypasses it.
 
 ---
 
@@ -359,13 +363,14 @@ quick-reference:
 
 | element / prop (snake_case wire) | notes |
 |---|---|
-| `type`: `row` `column` `section` `tabs` `field` `related_list` `component` `divider` `text` | discriminator |
+| `type`: `row` `column` `section` `tabs` `field` `related_list` `related_record` `component` `divider` `text` | discriminator |
 | CommonProps: `id` `visible_when` `read_only_when` `width` `height` `grow` `shrink` `align` `responsive` | on every element |
 | row/column: `gap` (`xs`/`sm`/`md`/`lg`) `align` `justify` `children`; row also `allows_wrap` | |
 | section: `title` `description` `is_collapsible` `default_collapsed` `content` | |
 | tabs: `tabs[]` (`id` `label` `icon` `visible_when` `content`) `default_tab_id` | |
 | field: `attribute` `label`(null hides) `description` `placeholder` `is_read_only` `is_required` `empty_display` `control` `control_props` | `attribute` = snake_case data-key; dot-path into objects (`signature.type`) |
 | related_list: `related_entity_slug` `via_attribute` `list_slug` | `via_attribute` = the relation attr on the related entity pointing back |
+| related_record: `related_entity_slug` `via_attribute` `page_slug` `follows_parent_edit_mode` | same inbound `via_attribute` as related_list; renders the FIRST match with a record page (`page_slug` unvalidated → falls back to the entity's default); no chrome — wrap in a `section` for a title; nests 3 deep max |
 | component: `component_slug` `props` | |
 | text: `variant` (`heading`/`subheading`/`body`/`caption`/`callout`) `content` | |
 | side_panel: `width` `is_sticky` `content` | optional right rail |

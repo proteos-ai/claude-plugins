@@ -211,7 +211,7 @@ On a page, bind fields to the **leaves** (`shipping_address.postal_code`), never
 - `on_delete` ∈ `cascade` `restrict` `set-null`. **`set-null` is incompatible with `is_required: true`.**
 - FK naming convention: `<related_slug>_id` → `customer_id`.
 - **Cardinality is always many-to-one.** For many-to-many, model a join entity (§6).
-- ⚠️ **`on_delete` is advisory metadata — there is NO database foreign key and NO cascade.** Deleting the referenced record does nothing to the referrer at the DB level. If a delete must propagate, a `before_delete` hook does it. Treat `on_delete` as documented intent.
+- ✅ **`on_delete` is enforced** — data-service applies it on every record delete, atomically: `restrict` blocks the delete with 409 `relation_restrict` while referencing rows exist (also the fallback for an absent/unknown value), `cascade` deletes the referencing rows (walked transitively), `set-null` nulls the referencing attribute. Cascaded rows fire their own `before_delete` hooks + `record.deleted` events; the plan is capped at 10 000 records (400 `cascade_too_large`). No Postgres FK backs it — enforcement is application-level over the inbound-relation graph, so direct SQL bypasses it.
 
 **currency** — record value is `{ "amount": "2840000.00", "currency_code": "USD" }`; **`amount` is a decimal STRING** (a number is rejected).
 ```json

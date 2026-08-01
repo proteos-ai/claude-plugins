@@ -70,8 +70,10 @@ A worked, convention-correct example module is at
 5. **Descriptions are non-negotiable.** Every entity, attribute, enum value,
    and relation carries substantive business context — the schema is read by
    AI agents that have no other source. No placeholders.
-6. **Relations have NO database cascade.** `on_delete` is advisory metadata.
-   If deleting A must clean up B, a `before_delete` hook does it.
+6. **`on_delete` is enforced on record delete.** Pick it deliberately per
+   relation: `restrict` blocks the delete (409 `relation_restrict`), `cascade`
+   deletes the referencing rows transitively, `set-null` nulls the referencing
+   attribute — all applied in one transaction by data-service.
 7. **No design before discovery sign-off.** Run **module-discovery** first;
    design only a signed-off, captured understanding.
 8. **Preview before deploy.** The user approves what they SEE in the served
@@ -549,7 +551,7 @@ populated one blanks it (unchanged values are skipped) — verify with
 | Preview pane can't render the app.proteos.ai URL | pane refuses external origins; old `pro` doesn't proxy locally | upgrade `pro` (≥ v0.17.x proxies the preview app through the local port), or send the URL to the user as a clickable link |
 | Preview URL 404s | web app doesn't host `/module-preview/` | deployed env, or run the web dev server + `--app-url` |
 | Second serve on a weird port | previous serve still running | kill the old background task first |
-| Bridge rows orphaned after parent delete | assumed `on_delete` cascades | delete dependents in a `before_delete` hook |
+| Parent delete 409 `relation_restrict` | an inbound relation is `on_delete: restrict` | repoint/clear the children, or model that relation as `cascade`/`set-null` |
 | Sensitive key leaked to the browser | any `variables` value (secret or not) is readable client-side | never store server-only credentials as module variables |
 
 ## Command quick reference

@@ -51,7 +51,7 @@ keep it open while designing a record-detail screen.
 >     `publicDownloadUrl` (e.g. images embedded on the page).
 >   Everything else (`account`, `agents`, `knowledge`, authed `data`/`meta`/
 >   `storage`) throws.
-> - `field` / `related_list` elements are forbidden (as on all non-record
+> - `field` / `related_list` / `related_record` elements are forbidden (as on all non-record
 >   pages) — there is no record context and no authed query path.
 >
 > Confirm the public-exposure intent with the user before authoring
@@ -150,7 +150,7 @@ content and drop the padding so a component runs **edge-to-edge**.
 ## 3. The element catalogue
 
 Discriminated union on `type`: `row` · `column` · `section` · `tabs` · `field`
-· `related_list` · `component` · `divider` · `text`.
+· `related_list` · `related_record` · `component` · `divider` · `text`.
 
 **Every element carries CommonProps** (all optional): `id`, `visible_when`,
 `read_only_when`, `width`, `height`, `grow`, `shrink`, `align`, `responsive`.
@@ -176,9 +176,25 @@ and `default_tab_id` references tab ids.
 |---|---|---|
 | `field` | `attribute`, `label`, `control`, … (§4) | bound input/display. The center of gravity. |
 | `related_list` | `related_entity_slug`, `via_attribute`, `list_slug?` | a live table of related records — every record whose `via_attribute` FK points back at this one. `list_slug` pins the column model (else the related entity's first list). Rows click through. |
+| `related_record` | `related_entity_slug`, `via_attribute`, `page_slug?`, `follows_parent_edit_mode?` | the FIRST related record (oldest first), rendered inline with a record page — `page_slug` pins which, else the entity's default. Hover-pencil editing; it saves the related record itself. No chrome of its own — wrap it in a `section` for a title. Use for genuine one-to-one facets; many records → `related_list`. |
 | `component` | `component_slug`, `props?` | mounts a registered custom React component (map, chart, board). Author it with **component-engineer**. |
 | `divider` | — | a horizontal rule. Use sparingly; sections already separate. |
 | `text` | `variant` (`heading`/`subheading`/`body`/`caption`/`callout`), `content` | static prose. `callout` for one-line context ("All amounts in USD"); `caption` for eyebrow labels. `content` must be non-empty. |
+
+**Both related elements address the relation inbound**, and the direction is the
+easy thing to get wrong: `via_attribute` is the relation attribute on the
+RELATED entity pointing back at this page's entity, never an attribute on the
+host entity. On a Company page embedding a Contact →
+`related_entity_slug: "contact"`, `via_attribute: "company_id"` (because
+`contact.company_id` targets `company`). Both are record-bound, so both are
+rejected on `platform` / `kiosk` / `public` pages.
+
+`related_record` specifics: `page_slug` must be a `type: "record"` page for
+`related_entity_slug`, and it is **not** validated on save — a typo or deleted
+page silently falls back to that entity's default record page. With nothing
+linked it renders a muted "No <Entity> linked" placeholder. Embedded record
+pages nest at most 3 deep (host included) and a cycle renders a placeholder
+instead of recursing.
 
 ---
 
@@ -360,7 +376,10 @@ column (main, gap: md)
 - **Related records go in a `related_list`, never re-typed as fields.** A
   customer's orders, an order's line items, a project's tasks: `related_list`
   with the child's back-reference `via_attribute`. Give it its own tab or
-  section.
+  section. For a genuine **one-to-one** facet — a
+  company's primary contact, an order's shipping-address record — use
+  `related_record` instead: it embeds that record's own page inline, editable
+  in place. Never re-type the related record's fields onto the host page.
 - **Lifecycle/status is a first-class enum, shown high and often gated.** Use
   `read_only_when` to lock commercial fields once a record is `shipped` /
   `signed` / `closed-won`; use `visible_when` to reveal fields per state.
@@ -431,6 +450,7 @@ never embedded in the page. Offline renderer value shapes:
 - [ ] Every element has a stable `id`; tab ids are unique and match `default_tab_id`.
 - [ ] Overview is first and not collapsible; system/audit fields are low or omitted.
 - [ ] Related records use a `related_list` with the correct back-reference `via_attribute`.
+- [ ] One-to-one facets use `related_record` (not a `related_list` showing one row, and not re-typed fields), wrapped in a `section` if they need a title.
 - [ ] `control` only set when overriding the default; `control_props` dropped when the control changes.
 - [ ] Condition `value`s are strings; `read_only_when` is on fields (mirror onto children for a section).
 - [ ] `side_panel` omitted unless a tool/widget earns it.
